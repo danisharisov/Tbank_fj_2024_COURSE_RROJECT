@@ -328,7 +328,7 @@ public class    CommandHandler {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
         Movie selectedMovie = sessionService.getSelectedMovie(chatId);
         if (currentUser != null && selectedMovie != null) {
-            userMovieService.updateMovieStatus(currentUser, selectedMovie, MovieStatus.WATCHED);
+            userMovieService.setMovieStatusForUser(currentUser, selectedMovie, MovieStatus.UNWATCHED);
             messageSender.sendMessage(chatId, "Фильм успешно удален из просмотренных.");
             sessionService.setSelectedMovie(chatId, null);
             messageSender.sendMainMenu(chatId);

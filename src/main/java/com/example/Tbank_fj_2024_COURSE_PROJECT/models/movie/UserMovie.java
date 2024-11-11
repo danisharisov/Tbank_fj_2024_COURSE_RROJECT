@@ -30,7 +30,7 @@ public class UserMovie {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MovieStatus status; // Статус фильма: WATCHED или WANT_TO_WATCH
+    private MovieStatus status;
 
     @Column(name = "user_rating", nullable = true)
     private Double Rating;
@@ -38,7 +38,7 @@ public class UserMovie {
     @Min(0)
     @Max(100)
     @Column(nullable = true)
-    private Integer hype; // Уровень ажиотажа (опционально)
+    private Integer hype;
 
     @Column(name = "suggested_by")
     private String suggestedBy;

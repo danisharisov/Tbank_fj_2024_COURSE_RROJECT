@@ -20,6 +20,9 @@ public class OmdbService {
 
     private static final Logger logger = LoggerFactory.getLogger(OmdbService.class);
 
+    @Value("${omdb.api.url}")
+    private String apiUrl;
+
     @Value("${omdb.api.key}")
     private String apiKey;
 
@@ -30,31 +33,37 @@ public class OmdbService {
     }
 
     public Movie getMovieByImdbId(String imdbId) {
-        String url = String.format("http://www.omdbapi.com/?i=%s&apikey=%s", imdbId, apiKey);
-        logger.info("Request URL for movie by IMDb ID: {}", url);
-
-        OmdbMovieResponse omdbMovieResponse = restTemplate.getForObject(url, OmdbMovieResponse.class);
-        if (omdbMovieResponse != null && "True".equalsIgnoreCase(omdbMovieResponse.getResponse())) {
-            logger.info("Found movie: {}", omdbMovieResponse.getTitle());
-            return mapOmdbResponseToMovie(omdbMovieResponse);
-        } else {
-            logger.warn("Movie not found or incorrect response for IMDb ID: {}", imdbId);
-            return null;
+        String url = String.format("%s/?i=%s&apikey=%s", apiUrl, imdbId, apiKey);
+        try {
+            logger.info("Request URL for movie by IMDb ID: {}", url);
+            OmdbMovieResponse omdbMovieResponse = restTemplate.getForObject(url, OmdbMovieResponse.class);
+            if (omdbMovieResponse != null && "True".equalsIgnoreCase(omdbMovieResponse.getResponse())) {
+                logger.info("Found movie: {}", omdbMovieResponse.getTitle());
+                return mapOmdbResponseToMovie(omdbMovieResponse);
+            } else {
+                logger.warn("Movie not found or incorrect response for IMDb ID: {}", imdbId);
+            }
+        } catch (Exception e) {
+            logger.error("Error fetching movie by IMDb ID: {}", imdbId, e);
         }
+        return null;
     }
 
     public List<Movie> searchMoviesByTitle(String title) {
-        String url = String.format("http://www.omdbapi.com/?s=%s&type=movie&apikey=%s", encodeValue(title), apiKey);
-        logger.info("Request URL for search by title: {}", url);
-
-        OmdbSearchResult searchResult = restTemplate.getForObject(url, OmdbSearchResult.class);
-        if (searchResult != null && "True".equalsIgnoreCase(searchResult.getResponse())) {
-            logger.info("OMDb API returned {} results", searchResult.getTotalResults());
-            return mapOmdbSearchResultToMovies(searchResult);
-        } else {
-            logger.warn("OMDb API response is empty or invalid for title: {}", title);
-            return Collections.emptyList();
+        String url = String.format("%s/?s=%s&type=movie&apikey=%s", apiUrl, encodeValue(title), apiKey);
+        try {
+            logger.info("Request URL for search by title: {}", url);
+            OmdbSearchResult searchResult = restTemplate.getForObject(url, OmdbSearchResult.class);
+            if (searchResult != null && "True".equalsIgnoreCase(searchResult.getResponse())) {
+                logger.info("OMDb API returned {} results", searchResult.getTotalResults());
+                return mapOmdbSearchResultToMovies(searchResult);
+            } else {
+                logger.warn("OMDb API response is empty or invalid for title: {}", title);
+            }
+        } catch (Exception e) {
+            logger.error("Error searching movies by title: {}", title, e);
         }
+        return Collections.emptyList();
     }
 
     private Movie mapOmdbResponseToMovie(OmdbMovieResponse omdbMovieResponse) {
@@ -65,12 +74,9 @@ public class OmdbService {
         movie.setImdbRating(omdbMovieResponse.getImdbRating());
         movie.setPoster(omdbMovieResponse.getPoster());
         movie.setType(omdbMovieResponse.getType());
-
-        // Проверяем, чтобы поле director не было null
         movie.setDirector(omdbMovieResponse.getDirector() != null ? omdbMovieResponse.getDirector() : "Unknown Director");
         return movie;
     }
-
 
     private List<Movie> mapOmdbSearchResultToMovies(OmdbSearchResult searchResult) {
         List<Movie> movies = new ArrayList<>();
@@ -88,7 +94,6 @@ public class OmdbService {
         }
         return movies;
     }
-
 
     private String encodeValue(String value) {
         try {

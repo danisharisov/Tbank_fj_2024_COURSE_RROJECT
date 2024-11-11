@@ -6,7 +6,6 @@ import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.UserMovie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.Friendship;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.FriendshipStatus;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.repositories.AppUserRepository;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.repositories.FriendshipRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,76 +21,81 @@ import java.util.stream.Collectors;
 public class FriendshipService {
 
     private static final Logger logger = LoggerFactory.getLogger(FriendshipService.class);
+
     private final FriendshipRepository friendshipRepository;
-    private final AppUserRepository appUserRepository;
+    private final AppUserService appUserService;
     private final UserMovieService userMovieService;
 
     @Autowired
     public FriendshipService(FriendshipRepository friendshipRepository,
-                             AppUserRepository appUserRepository,
+                             AppUserService appUserService,
                              UserMovieService userMovieService) {
         this.friendshipRepository = friendshipRepository;
-        this.appUserRepository = appUserRepository;
+        this.appUserService = appUserService;
         this.userMovieService = userMovieService;
     }
 
     public void addFriendRequest(String currentUsername, String friendUsername) {
-        // Проверка на добавление самого себя
-        if (currentUsername.equals(friendUsername)) {
-            throw new IllegalArgumentException("Нельзя добавить самого себя в друзья.");
-        }
+        validateNotSelf(currentUsername, friendUsername);
 
-        AppUser currentUser = appUserRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + currentUsername));
-        AppUser friendUser = appUserRepository.findByUsername(friendUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Друг не найден: " + friendUsername));
+        AppUser currentUser = appUserService.findByUsername(currentUsername);
+        AppUser friendUser = appUserService.findByUsername(friendUsername);
 
-        if (friendshipRepository.findByUserAndFriend(currentUser, friendUser).isPresent()) {
+        if (friendshipExists(currentUser, friendUser)) {
             throw new IllegalArgumentException("Запрос на дружбу уже отправлен или вы уже друзья.");
         }
 
-        // Создаем новый запрос
+        friendshipRepository.save(createFriendship(currentUser, friendUser, FriendshipStatus.PENDING));
+        logger.info("Запрос на дружбу отправлен от {} к {}", currentUsername, friendUsername);
+    }
+
+    private void validateNotSelf(String currentUsername, String friendUsername) {
+        if (currentUsername.equals(friendUsername)) {
+            throw new IllegalArgumentException("Нельзя добавить самого себя в друзья.");
+        }
+    }
+
+    private boolean friendshipExists(AppUser user, AppUser friend) {
+        return friendshipRepository.findByUserAndFriend(user, friend).isPresent();
+    }
+
+    private Friendship createFriendship(AppUser user, AppUser friend, FriendshipStatus status) {
         Friendship friendship = new Friendship();
-        friendship.setUser(currentUser);
-        friendship.setFriend(friendUser);
-        friendship.setStatus(FriendshipStatus.PENDING);  // Статус "Ожидает подтверждения"
-        friendshipRepository.save(friendship);
+        friendship.setUser(user);
+        friendship.setFriend(friend);
+        friendship.setStatus(status);
+        return friendship;
     }
 
     public void rejectFriendRequest(String currentUsername, String requesterUsername) {
-        AppUser currentUser = appUserRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + currentUsername));
-        AppUser requesterUser = appUserRepository.findByUsername(requesterUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Друг не найден: " + requesterUsername));
+        AppUser currentUser = appUserService.findByUsername(currentUsername);
+        AppUser requesterUser = appUserService.findByUsername(requesterUsername);
 
         Friendship friendship = friendshipRepository.findByUserAndFriend(requesterUser, currentUser)
                 .orElseThrow(() -> new IllegalArgumentException("Заявка на дружбу не найдена."));
 
-        // Удаляем запись о заявке
         friendshipRepository.delete(friendship);
+        logger.info("Запрос на дружбу от {} к {} отклонен", requesterUsername, currentUsername);
     }
 
     public void acceptFriendRequest(String currentUsername, String requesterUsername) {
-        AppUser currentUser = appUserRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + currentUsername));
-        AppUser requesterUser = appUserRepository.findByUsername(requesterUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Друг не найден: " + requesterUsername));
+        AppUser currentUser = appUserService.findByUsername(currentUsername);
+        AppUser requesterUser = appUserService.findByUsername(requesterUsername);
 
         Friendship friendship = friendshipRepository.findByUserAndFriend(requesterUser, currentUser)
                 .orElseThrow(() -> new IllegalArgumentException("Заявка на дружбу не найдена."));
 
-        // Меняем статус на "Подтверждено"
         friendship.setStatus(FriendshipStatus.ACCEPTED);
         friendshipRepository.save(friendship);
+
         synchronizePlannedMovies(currentUser, requesterUser);
         synchronizePlannedMovies(requesterUser, currentUser);
+        logger.info("Запрос на дружбу от {} к {} принят", requesterUsername, currentUsername);
     }
-
 
     @Transactional
     public List<AppUser> getFriends(String username) {
-        AppUser user = appUserRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
+        AppUser user = appUserService.findByUsername(username);
 
         return friendshipRepository.findAllByUserOrFriendAndStatus(user, FriendshipStatus.ACCEPTED)
                 .stream()
@@ -100,47 +104,41 @@ public class FriendshipService {
     }
 
     public List<AppUser> getIncomingRequests(String username) {
-        AppUser user = appUserRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
+        AppUser user = appUserService.findByUsername(username);
         return friendshipRepository.findAllByFriendAndStatus(user, FriendshipStatus.PENDING)
                 .stream()
-                .map(Friendship::getUser)  // Возвращаем пользователей, которые отправили запрос текущему пользователю
+                .map(Friendship::getUser)
                 .collect(Collectors.toList());
     }
 
     public List<AppUser> getOutgoingRequests(String username) {
-        AppUser user = appUserRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + username));
+        AppUser user = appUserService.findByUsername(username);
         return friendshipRepository.findAllByUserAndStatus(user, FriendshipStatus.PENDING)
                 .stream()
-                .map(Friendship::getFriend)  // Возвращаем пользователей, которым текущий пользователь отправил запрос
+                .map(Friendship::getFriend)
                 .collect(Collectors.toList());
     }
+
     public void removeFriendship(String currentUsername, String friendUsername) {
-        AppUser currentUser = appUserRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + currentUsername));
-        AppUser friendUser = appUserRepository.findByUsername(friendUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Друг не найден: " + friendUsername));
+        AppUser currentUser = appUserService.findByUsername(currentUsername);
+        AppUser friendUser = appUserService.findByUsername(friendUsername);
 
-        // Удаление дружбы у текущего пользователя
-        friendshipRepository.findByUserAndFriend(currentUser, friendUser)
-                .ifPresent(friendshipRepository::delete);
-
-        // Удаление дружбы у друга
-        friendshipRepository.findByUserAndFriend(friendUser, currentUser)
-                .ifPresent(friendshipRepository::delete);
+        deleteFriendship(currentUser, friendUser);
+        deleteFriendship(friendUser, currentUser);
 
         userMovieService.updateSuggestedMoviesStatus(currentUser, friendUser, MovieStatus.UNWATCHED);
         userMovieService.updateSuggestedMoviesStatus(friendUser, currentUser, MovieStatus.UNWATCHED);
+        logger.info("Дружба между {} и {} успешно удалена", currentUsername, friendUsername);
+    }
 
-        logger.info("Дружба между {} и {} успешно удалена.", currentUsername, friendUsername);
+    private void deleteFriendship(AppUser user, AppUser friend) {
+        friendshipRepository.findByUserAndFriend(user, friend)
+                .ifPresent(friendshipRepository::delete);
     }
 
     public void cancelFriendRequest(String senderUsername, String receiverUsername) {
-        AppUser sender = appUserRepository.findByUsername(senderUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + senderUsername));
-        AppUser receiver = appUserRepository.findByUsername(receiverUsername)
-                .orElseThrow(() -> new IllegalArgumentException("Друг не найден: " + receiverUsername));
+        AppUser sender = appUserService.findByUsername(senderUsername);
+        AppUser receiver = appUserService.findByUsername(receiverUsername);
 
         friendshipRepository.findOutgoingRequest(sender, receiver)
                 .ifPresent(friendshipRepository::delete);
@@ -149,23 +147,18 @@ public class FriendshipService {
     }
 
     private void synchronizePlannedMovies(AppUser targetUser, AppUser sourceUser) {
-        List<UserMovie> sourcePlannedMovies = userMovieService.getPlannedMovies(sourceUser);
+        List<UserMovie> sourcePlannedMovies = userMovieService.getCombinedPlannedMovies(sourceUser);
 
         for (UserMovie sourceMovie : sourcePlannedMovies) {
             Movie movie = sourceMovie.getMovie();
-
             Optional<UserMovie> existingUserMovie = userMovieService.findByUserAndMovieAndStatus(targetUser, movie, MovieStatus.WANT_TO_WATCH_BY_FRIEND);
-            if (existingUserMovie.isEmpty()) {
-                userMovieService.addSuggestedMovie(targetUser, movie, sourceUser.getUsername());
-            }
+
+            existingUserMovie.ifPresentOrElse(
+                    um -> logger.info("Фильм {} уже предложен пользователю {}", movie.getTitle(), targetUser.getUsername()),
+                    () -> userMovieService.addSuggestedMovie(targetUser, movie, sourceUser.getUsername())
+            );
         }
 
-        logger.info("Синхронизация запланированных фильмов между пользователями {} и {} завершена.", targetUser.getUsername(), sourceUser.getUsername());
+        logger.info("Синхронизация запланированных фильмов между пользователями {} и {} завершена", targetUser.getUsername(), sourceUser.getUsername());
     }
-
-
-
-
-
-
 }

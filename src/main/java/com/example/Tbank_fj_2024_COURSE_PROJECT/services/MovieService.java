@@ -16,15 +16,21 @@ public class MovieService {
     public MovieService(MovieRepository movieRepository) {
         this.movieRepository = movieRepository;
     }
-
-    // Поиск фильма по его IMDb ID в базе данных
     public Optional<Movie> findMovieByImdbId(String imdbId) {
         return movieRepository.findByImdbId(imdbId);
     }
-
-    // Сохранение нового фильма в базе данных
     public Movie saveMovie(Movie movie) {
-        return movieRepository.save(movie);
+        return movieRepository.findByImdbId(movie.getImdbId())
+                .orElseGet(() -> movieRepository.save(movie));
+    }
+
+    public Movie findOrSaveMovieByImdbId(String imdbId, Movie movie) {
+        return movieRepository.findByImdbId(imdbId).orElseGet(() -> movieRepository.save(movie));
+    }
+
+    public Movie getMovieByImdbId(String imdbId) {
+        return movieRepository.findByImdbId(imdbId)
+                .orElseThrow(() -> new IllegalArgumentException("Фильм с таким IMDb ID не найден: " + imdbId));
     }
 
 }
