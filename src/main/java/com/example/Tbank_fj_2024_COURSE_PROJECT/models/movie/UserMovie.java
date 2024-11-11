@@ -2,13 +2,15 @@ package com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import org.hibernate.annotations.NotFound;
-import org.hibernate.annotations.NotFoundAction;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import lombok.*;
 
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "user_movie")
 @EqualsAndHashCode(exclude = "user")
@@ -18,7 +20,7 @@ public class UserMovie {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private AppUser user;
 
@@ -33,6 +35,11 @@ public class UserMovie {
     @Column(name = "user_rating", nullable = true)
     private Double Rating;
 
+    @Min(0)
+    @Max(100)
     @Column(nullable = true)
     private Integer hype; // Уровень ажиотажа (опционально)
+
+    @Column(name = "suggested_by")
+    private String suggestedBy;
 }

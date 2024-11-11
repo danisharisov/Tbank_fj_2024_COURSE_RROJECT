@@ -19,10 +19,28 @@ public interface UserMovieRepository extends JpaRepository<UserMovie, Long> {
     Optional<UserMovie> findByUserIdAndMovieImdbId(Long userId, String imdbId);
     Optional<UserMovie> findByUserAndMovieAndStatus(AppUser user, Movie movie, MovieStatus status);
 
-    List<UserMovie> findByUserAndStatus(AppUser user, MovieStatus watched);
+    List<UserMovie> findByUserAndStatus(AppUser user, MovieStatus status);
 
     List<UserMovie> findByMovieAndUserIn(Movie movie, List<AppUser> friends);
 
     @Query("SELECT COUNT(um) FROM UserMovie um WHERE um.movie.id = :movieId")
     long countByMovieId(@Param("movieId") Long movieId);
+
+    @Query("SELECT um FROM UserMovie um JOIN FETCH um.user JOIN Friendship f ON (f.user.username = :username OR f.friend.username = :username) AND f.status = 'ACCEPTED' WHERE um.movie.imdbId = :imdbId")
+    List<UserMovie> findAllByMovieAndFriends(@Param("username") String username, @Param("imdbId") String imdbId);
+
+    @Query("SELECT um FROM UserMovie um " +
+            "JOIN Friendship f ON (f.user = :user AND f.friend = um.user) OR (f.friend = :user AND f.user = um.user) " +
+            "WHERE f.status = 'ACCEPTED' AND um.status = :status")
+    List<UserMovie> findPlannedMoviesByFriends(@Param("user") AppUser user, @Param("status") MovieStatus status);
+    List<UserMovie> findByUserAndStatusAndSuggestedBy(AppUser user, MovieStatus status, String suggestedBy);
+
+
+
+
+
+
+
+
+
 }

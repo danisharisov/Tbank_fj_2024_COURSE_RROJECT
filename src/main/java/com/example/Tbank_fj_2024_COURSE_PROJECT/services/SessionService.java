@@ -24,8 +24,12 @@ public class SessionService {
 
     public void createSession(String chatId, AppUser user) {
         sessions.put(chatId, user);
+        if (user != null) {
+            userStates.put(chatId, new UserState(UserStateEnum.DEFAULT_LOGGED, "")); // Устанавливаем LOGGED состояние
+        } else {
+            userStates.put(chatId, new UserState(UserStateEnum.DEFAULT_UNLOGGED, "")); // Если почему-то пользователь не найден, UNLOGGED
+        }
     }
-
     public AppUser getCurrentUser(String chatId) {
         return sessions.get(chatId);
     }
@@ -36,16 +40,19 @@ public class SessionService {
             logger.info("Изменение состояния пользователя для chatId {}: {} -> {}", chatId, userState.getState(), newState);
             userState.setState(newState);
             saveUserState(chatId, userState);
+            logger.info("Состояние успешно сохранено для chatId {}: {}", chatId, userState.getState());
         } else {
-            userState = new UserState(UserStateEnum.DEFAULT, "");
-            logger.warn("Не удалось найти состояние пользователя для chatId {} при попытке установить новое состояние: {}", chatId, newState);
+            userState = new UserState(UserStateEnum.DEFAULT_UNLOGGED, "");
+            logger.warn("Не удалось найти состояние пользователя для chatId {}. Устанавливаем DEFAULT_UNLOGGED состояние.");
+            saveUserState(chatId, userState);
         }
     }
 
 
 
     public void clearUserState(String chatId) {
-        userStates.remove(chatId);
+        userStates.put(chatId, new UserState(UserStateEnum.DEFAULT_LOGGED, "")); // Оставляем авторизованное состояние, если он был авторизован
+        logger.info("Состояние пользователя для chatId {} сброшено в DEFAULT_LOGGED.", chatId);
     }
 
     public void saveUserState(String chatId, UserState state) {
@@ -54,10 +61,15 @@ public class SessionService {
     }
 
     public UserState getUserState(String chatId) {
-        UserState state = userStates.getOrDefault(chatId, new UserState(UserStateEnum.DEFAULT, ""));
-        logger.info("Получение состояния пользователя для chatId {}: {}", chatId, state);
+        UserState state = userStates.computeIfAbsent(chatId, k -> {
+            logger.info("Состояние для chatId {} не найдено. Инициализируем DEFAULT_UNLOGGED состояние.", chatId);
+            return new UserState(UserStateEnum.DEFAULT_UNLOGGED, ""); // Инициализация нового пользователя как неавторизованного
+        });
+
+        logger.info("Текущее состояние пользователя для chatId {}: {}", chatId, state.getState());
         return state;
     }
+
     public void removeSession(String chatId) {
         sessions.remove(chatId);
     }
@@ -75,6 +87,20 @@ public class SessionService {
         UserState userState = getUserState(chatId);
         logger.info("Получение выбранного фильма для chatId {}: {}", chatId, userState != null ? userState.getSelectedMovie() : "null");
         return userState != null ? userState.getSelectedMovie() : null;
+    }
+
+    public void updateUserState(String chatId, UserStateEnum newState, String context) {
+        UserState state = userStates.computeIfAbsent(chatId, k -> new UserState(UserStateEnum.DEFAULT_LOGGED, "")); // Предполагаем, что он уже логинится
+        logger.info("Изменение состояния пользователя chatId {}: {} -> {}", chatId, state.getState(), newState);
+        state.setState(newState);
+        state.setContext(context);
+    }
+
+    public void clearSelectedMovie(String chatId) {
+        UserState userState = getUserState(chatId);
+        userState.setSelectedMovie(null);
+        saveUserState(chatId, userState);
+        logger.info("Выбранный фильм для chatId {} был очищен.", chatId);
     }
 
 

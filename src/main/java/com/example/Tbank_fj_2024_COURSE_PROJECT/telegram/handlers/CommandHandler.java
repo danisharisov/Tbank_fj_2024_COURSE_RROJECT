@@ -7,8 +7,6 @@ import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.repositories.MovieRepository;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.services.*;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +14,10 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 public class    CommandHandler {
@@ -58,143 +57,113 @@ public class    CommandHandler {
         this.movieService = movieService;
     }
 
-    public void handleMessage(String chatId, String messageText) {
-        SessionService.UserState userState = sessionService.getUserState(chatId);
-
-        // Если состояние не найдено, создаём и сохраняем начальное состояние
-        if (userState == null || UserStateEnum.DEFAULT.equals(userState.getState())) {
-            logger.warn("Состояние пользователя для chatId {} отсутствует или сброшено. Устанавливаем начальное состояние.", chatId);
-            userState = new SessionService.UserState(UserStateEnum.DEFAULT, "");
-            sessionService.saveUserState(chatId, userState);
+    public void handleUserCommand(String chatId, String command, List<String> args) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        if (currentUser == null) {
+            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа или /register для регистрации.");
+            return;
         }
 
-        // Логируем текущее состояние
-        logger.info("Текущее состояние пользователя chatId {}: {}", chatId, userState.getState());
+        switch (command) {
 
-        UserStateEnum state = userState.getState();
+            case "add_friend":
+                sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_FRIEND_USERNAME);
+                messageSender.sendMessage(chatId, "Введите имя друга для добавления:");
+                break;
+            case "main_menu":
+                sessionService.clearUserState(chatId);
+                messageSender.sendMainMenu(chatId);
+                break;
+            default:
+                messageSender.sendMessage(chatId, "Неизвестная команда.");
+                break;
+        }
+    }
+
+    public void handleStateBasedCommand(String chatId, String messageText, UserStateEnum state) {
+        logger.info("Текущее состояние для chatId {}: {}", chatId, state);
+
+        if (state == UserStateEnum.DEFAULT_UNLOGGED) {
+            handleUnloggedState(chatId, messageText);
+            return;
+        }
 
         switch (state) {
-            case WAITING_FOR_MOVIE_TITLE:
-                processAddMovie(chatId, messageText);
-                sessionService.clearUserState(chatId);
+            case WAITING_FOR_MOVIE_TITLE_PLANNED:
+                processAddMovie(chatId, messageText, true);  // true для запланированных
                 break;
-            case  WAITING_FOR_FRIEND_USERNAME:
+
+            case WAITING_FOR_MOVIE_TITLE_WATCHED:
+                processAddMovie(chatId, messageText, false); // false для просмотренных
+                break;
+            case WAITING_FOR_FRIEND_USERNAME:
                 processAddFriend(chatId, messageText);
+                sessionService.clearUserState(chatId);  // Сбрасываем состояние
+                break;
+            case AWAITING_FRIEND_DELETION:
+                processDeleteFriend(chatId, messageText); // обработка удаления друга
                 sessionService.clearUserState(chatId);
                 break;
-            case AWAITING_MOVIE_SELECTION:
+            case AWAITING_PLANNED_MOVIE_SELECTION:
                 try {
-                    int movieIndex = Integer.parseInt(messageText.trim());
-                    handleMovieSelection(chatId, movieIndex);
+                    int movieIndex = Integer.parseInt(messageText);
+                    handlePlannedMovieSelection(chatId, movieIndex); // Передаем индекс фильма
                 } catch (NumberFormatException e) {
-                    messageSender.sendMessage(chatId, "Пожалуйста, введите корректный номер фильма.");
+                    messageSender.sendMessage(chatId, "Введите корректный номер фильма.");
                 }
+                break;
+            case AWAITING_MOVIE_SELECTION_USER:  // Обрабатываем фильм из списка просмотренных
+                try {
+                    int movieIndex = Integer.parseInt(messageText);
+                    handleMovieSelection(chatId, movieIndex); // Передаем индекс фильма
+                } catch (NumberFormatException e) {
+                    messageSender.sendMessage(chatId, "Введите корректный номер фильма.");
+                }
+                break;
+            case AWAITING_MOVIE_HYPE:
+                processMovieHype(chatId,messageText);
                 break;
             case AWAITING_MOVIE_RATING:
                 processMovieRating(chatId, messageText);
                 break;
+            case DEFAULT_LOGGED:
+                messageSender.sendMessage(chatId, "Вы авторизованы. Пожалуйста, выберите действие.");
+                messageSender.sendMainMenu(chatId);
+                break;
             default:
-                processCommand(chatId, messageText);
-                break;
-        }
-    }
-
-    private void processCommand(String chatId, String messageText) {
-        // Получаем текущего пользователя из сессии
-        AppUser currentUser = sessionService.getCurrentUser(chatId);
-
-        // Разбираем команду и её аргументы
-        ParsedCommand parsedCommand = CommandParser.parse(messageText);
-        String command = parsedCommand.getCommandName();
-        List<String> args = parsedCommand.getArgs();
-
-        // Проверяем статус пользователя
-        boolean isUserLoggedIn = currentUser != null;
-        switch (command) {
-            case "/login":
-                if (args.size() == 2) {
-                    String username = args.get(0);
-                    String password = args.get(1);
-                    handleLoginCommand(chatId, username, password);
-                } else {
-                    messageSender.sendMessage(chatId, "Используйте формат: /login [username] [password]");
-                }
-                break;
-
-            case "/register":
-                if (args.size() == 2) {
-                    String username = args.get(0);
-                    String password = args.get(1);
-                    handleRegisterCommand(chatId, username, password);
-                } else {
-                    messageSender.sendMessage(chatId, "Используйте формат: /register [username] [password]");
-                }
-                break;
-
-            case "add_movie":
-                if (isUserLoggedIn) {
-                    sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_MOVIE_TITLE);
-                    messageSender.sendMessage(chatId, "Введите название фильма для добавления:");
-                } else {
-                    messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа или /register для регистрации.");
-                }
-                break;
-
-            case "add_friend":
-                if (isUserLoggedIn) {
-                    sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_FRIEND_USERNAME);
-                    messageSender.sendMessage(chatId, "Введите имя друга для добавления:");
-                } else {
-                    messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа или /register для регистрации.");
-                }
-                break;
-
-            case "main_menu":
-                if (isUserLoggedIn) {
-                    sessionService.clearUserState(chatId);
-                    messageSender.sendMainMenu(chatId);
-                } else {
-                    messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа или /register для регистрации.");
-                }
-                break;
-
-            default:
-                if (isUserLoggedIn) {
-                    messageSender.sendMessage(chatId, "Неизвестная команда.");
-                    sessionService.clearUserState(chatId);
-                    messageSender.sendMainMenu(chatId);
-                } else {
-                    messageSender.sendMessage(chatId, "Используйте /register, чтобы зарегистрироваться, или /login, чтобы войти.");
-                }
+                messageSender.sendMessage(chatId, "Неизвестное состояние.");
                 break;
         }
     }
 
 
-    public void processAddMovie(String chatId, String title) {
+
+
+    public void processAddMovie(String chatId, String title, boolean isPlanned) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
         if (currentUser != null) {
-            // Выполняем поиск фильма по названию
             List<Movie> movies = omdbService.searchMoviesByTitle(title);
             if (!movies.isEmpty()) {
-                // Отправляем список найденных фильмов для выбора
-                messageSender.sendMovieSelectionMessage(chatId, movies);
-                sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION);
+                // Отправляем простой список фильмов
+                messageSender.sendSimpleMovieList(chatId, movies);
+                // Сохраняем информацию о статусе в sessionService для использования при выборе фильма
+                sessionService.setUserState(chatId, isPlanned ? UserStateEnum.WAITING_FOR_MOVIE_TITLE_PLANNED : UserStateEnum.WAITING_FOR_MOVIE_TITLE_WATCHED);
             } else {
-                messageSender.sendMessage(chatId, "Ошибка: фильмы по запросу \"" + title + "\" не найдены.");
+                messageSender.sendMessage(chatId, "Фильмы по запросу \"" + title + "\" не найдены.");
+                messageSender.sendMainMenu(chatId);
             }
         } else {
             messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
         }
     }
 
-    public void processMovieSelection(String chatId, String imdbId) {
+    public void processMovieSelection(String chatId, String imdbId, boolean isPlanned) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
+        logger.info(sessionService.getUserState(chatId) + " Мы заходим в processMovieSelection");
+
         if (currentUser != null) {
-            // Поиск фильма в базе данных
             Movie movie = movieService.findMovieByImdbId(imdbId)
                     .orElseGet(() -> {
-                        // Если фильма нет в базе, загружаем его через OMDb и сохраняем
                         Movie newMovie = omdbService.getMovieByImdbId(imdbId);
                         if (newMovie != null) {
                             movieService.saveMovie(newMovie);
@@ -204,27 +173,41 @@ public class    CommandHandler {
 
             if (movie != null) {
                 try {
-                    // Пытаемся добавить или обновить фильм в списке просмотренных
-                    appUserService.addWatchedMovie(currentUser, movie, chatId);
+                    if (isPlanned) {
+                        // Добавляем фильм пользователю в запланированные
+                        userMovieService.addPlannedMovie(currentUser, movie);
+                        messageSender.sendMessage(chatId, "Фильм успешно добавлен в список запланированных.");
+
+                        // Получаем список друзей пользователя
+                        List<AppUser> friends = friendshipService.getFriends(currentUser.getUsername());
+
+                        // Добавляем фильм каждому другу с статусом WANT_TO_WATCH_BY_FRIEND
+                        for (AppUser friend : friends) {
+                            userMovieService.addSuggestedMovie(friend, movie, currentUser.getUsername());
+                        }
+
+                        messageSender.sendMessage(chatId, "Фильм добавлен в списки друзей как предложенный вами.");
+                    } else {
+                        // Если фильм добавляется как просмотренный, добавляем только текущему пользователю
+                        userMovieService.addWatchedMovie(currentUser, movie, chatId);
+                        messageSender.sendMessage(chatId, "Фильм успешно добавлен в список просмотренных.");
+                    }
+
+                    messageSender.sendMainMenu(chatId);
                 } catch (IllegalArgumentException e) {
-                    // Обработка ошибок, если добавление не удалось
                     messageSender.sendMessage(chatId, e.getMessage());
                     sessionService.clearUserState(chatId);
-                    messageSender.sendMainMenu(chatId);
                 }
             } else {
-                // Если фильм не найден, выводим сообщение
                 messageSender.sendMessage(chatId, "Ошибка: фильм с таким IMDb ID не найден.");
                 sessionService.clearUserState(chatId);
-                messageSender.sendMainMenu(chatId);
             }
         } else {
-            // Сообщение, если пользователь не авторизован
             messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
-            sessionService.clearUserState(chatId);
-            messageSender.sendMainMenu(chatId);
         }
     }
+
+
     @Transactional
     public void handleMovieSelection(String chatId, int movieIndex) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
@@ -239,7 +222,7 @@ public class    CommandHandler {
 
                 // Сохраняем выбранный фильм и устанавливаем состояние
                 sessionService.setSelectedMovie(chatId, selectedMovie.getMovie());
-                sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION);
+                sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION_USER);
             }
         } else {
             messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
@@ -247,7 +230,39 @@ public class    CommandHandler {
     }
 
     @Transactional
+    public void handlePlannedMovieSelection(String chatId, int movieIndex) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        if (currentUser != null) {
+            List<UserMovie> combinedPlannedMovies = userMovieService.getCombinedPlannedMovies(currentUser);
+            if (movieIndex < 1 || movieIndex > combinedPlannedMovies.size()) {
+                messageSender.sendMessage(chatId, "Некорректный номер. Попробуйте снова.");
+            } else {
+                UserMovie selectedUserMovie = combinedPlannedMovies.get(movieIndex - 1);
+                Movie selectedMovie = selectedUserMovie.getMovie();
+                AppUser movieOwner = selectedUserMovie.getUser();
 
+                // Проверка на владельца
+                boolean isOwnMovie = userMovieService.isMovieOwner(currentUser, selectedMovie);
+
+                logger.info("Selected movie: {}, Owner: {}, Current user: {}", selectedMovie.getTitle(), movieOwner.getUsername(), currentUser.getUsername());
+
+                int userHype = (selectedUserMovie.getHype() != null) ? selectedUserMovie.getHype() : 0;
+                double averageFriendHype = userMovieService.getAverageFriendHype(currentUser, selectedMovie);
+
+                // Передаем параметр isOwnMovie, чтобы кнопка удаления отображалась только для собственных фильмов
+                messageSender.sendPlannedMovieDetailsWithOptions(chatId, currentUser, selectedMovie, userHype, averageFriendHype, isOwnMovie);
+                sessionService.setSelectedMovie(chatId, selectedMovie);
+                sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION_USER);
+            }
+        } else {
+            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
+        }
+    }
+
+
+
+
+    @Transactional
     public void processAddFriend(String chatId, String friendUsername) {
         try {
             AppUser currentUser = sessionService.getCurrentUser(chatId);
@@ -265,15 +280,70 @@ public class    CommandHandler {
         }
         messageSender.sendMessage(chatId, response.toString());
         messageSender.sendMessage(chatId, "Введите номер фильма, чтобы просмотреть его детали:");
-        sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION);
+        sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION_USER);
     }
+
+    @Transactional
+    public void handleShowCombinedPlannedMovies(String chatId) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        if (currentUser != null) {
+            List<UserMovie> combinedPlannedMovies = userMovieService.getCombinedPlannedMovies(currentUser);
+
+            Set<String> addedMovieIds = new HashSet<>();
+            StringBuilder response = new StringBuilder("Запланированные фильмы (ваши и предложенные друзьями):\n");
+
+            int index = 1;
+
+            for (UserMovie userMovie : combinedPlannedMovies) {
+                Movie movie = userMovie.getMovie();
+                MovieStatus status = userMovie.getStatus();
+                String suggestedBy = userMovie.getSuggestedBy();
+
+                if (addedMovieIds.add(movie.getImdbId())) {
+                    response.append(index++).append(". ").append(movie.getTitle())
+                            .append(" (").append(movie.getYear()).append(")");
+
+                    if (status == MovieStatus.WANT_TO_WATCH) {
+                        response.append(" — запланировано вами\n");
+                    } else if (status == MovieStatus.WANT_TO_WATCH_BY_FRIEND) {
+                        response.append(" — предложено другом ")
+                                .append(suggestedBy != null ? suggestedBy : "неизвестным пользователем")
+                                .append("\n");
+                    }
+                }
+            }
+
+            messageSender.sendMessage(chatId, response.toString());
+            sessionService.setUserState(chatId, UserStateEnum.AWAITING_PLANNED_MOVIE_SELECTION);
+        } else {
+            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
+        }
+    }
+
+
+
+
     @Transactional
     public void handleDeleteMovie(String chatId) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
         Movie selectedMovie = sessionService.getSelectedMovie(chatId);
         if (currentUser != null && selectedMovie != null) {
             userMovieService.updateMovieStatus(currentUser, selectedMovie, MovieStatus.WATCHED);
-            messageSender.sendMessage(chatId, "Фильм успешно помечен как не просмотренный.");
+            messageSender.sendMessage(chatId, "Фильм успешно удален из просмотренных.");
+            sessionService.setSelectedMovie(chatId, null);
+            messageSender.sendMainMenu(chatId);
+        } else {
+            messageSender.sendMessage(chatId, "Ошибка изменения статуса. Попробуйте снова.");
+        }
+    }
+
+    @Transactional
+    public void handleDeletePlannedMovie(String chatId) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        Movie selectedMovie = sessionService.getSelectedMovie(chatId);
+        if (currentUser != null && selectedMovie != null) {
+            userMovieService.removePlannedMovieAndUpdateFriends(currentUser, selectedMovie);
+            messageSender.sendMessage(chatId, "Фильм успешно удален из запланированных и обновлен статус у друзей.");
             sessionService.setSelectedMovie(chatId, null);
             messageSender.sendMainMenu(chatId);
         } else {
@@ -311,7 +381,6 @@ public class    CommandHandler {
             messageSender.sendMessage(chatId, "Некорректный формат числа. Введите оценку от 1.0 до 10.0.");
         }
 
-        sessionService.clearUserState(chatId);
         messageSender.sendMainMenu(chatId);
     }
 
@@ -322,7 +391,7 @@ public class    CommandHandler {
             AppUser newUser = new AppUser();
             newUser.setUsername(username);
             newUser.setPassword(password);
-            appUserService.registerUser(newUser);
+            appUserService.registerUser(newUser, chatId);
             messageSender.sendMessage(chatId, "Пользователь успешно зарегистрирован. Используйте /login для входа.");
         } catch (IllegalArgumentException e) {
             messageSender.sendMessage(chatId, "Ошибка при регистрации: " + e.getMessage());
@@ -334,6 +403,7 @@ public class    CommandHandler {
             AppUser user = appUserService.findByUsername(username);
             if (appUserService.checkPassword(user, password)) {
                 sessionService.createSession(chatId, user);
+                sessionService.setUserState(chatId, UserStateEnum.DEFAULT_LOGGED); // Меняем состояние на LOGGED
                 messageSender.sendMessage(chatId, "Вы успешно вошли как " + username + ".");
                 messageSender.sendMainMenu(chatId);
             } else {
@@ -344,50 +414,34 @@ public class    CommandHandler {
         }
     }
 
+    public void handleUnloggedState(String chatId,  String messageText) {
+            ParsedCommand parsedCommand = CommandParser.parse(messageText);
+            String command = parsedCommand.getCommandName();
+            List<String> args = parsedCommand.getArgs();
 
-
-    // Обработка команды добавления фильма
-    @Transactional
-    public void handleAddMovieCommand(String chatId, String messageText) {
-        AppUser currentUser = sessionService.getCurrentUser(chatId);
-        if (currentUser != null) {
-            // Логирование для отладки
-            logger.info("Пользователь {} начал процесс добавления фильма", currentUser.getUsername());
-
-            // Отправка запроса в OMDb API для поиска фильма по названию
-            List<Movie> foundMovies = omdbService.searchMoviesByTitle(messageText);
-
-            if (foundMovies.isEmpty()) {
-                messageSender.sendMessage(chatId, "Фильмы по запросу \"" + messageText + "\" не найдены.");
+            if ("/login".equals(command)) {
+                if (args.size() == 2) {
+                    String username = args.get(0);
+                    String password = args.get(1);
+                    handleLoginCommand(chatId, username, password);
+                } else {
+                    messageSender.sendMessage(chatId, "Используйте формат: /login [username] [password]");
+                }
+            } else if ("/register".equals(command)) {
+                if (args.size() == 2) {
+                    String username = args.get(0);
+                    String password = args.get(1);
+                    handleRegisterCommand(chatId, username, password);
+                } else {
+                    messageSender.sendMessage(chatId, "Используйте формат: /register [username] [password]");
+                }
             } else {
-                // Отправляем пользователю кнопки с найденными фильмами для выбора
-                messageSender.sendMovieSelectionMessage(chatId, foundMovies);
-                // Сохраняем состояние ожидания выбора фильма
-                sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION);
+                messageSender.sendMessage(chatId, "Вы не авторизованы. Пожалуйста, используйте /login для входа или /register для регистрации.");
             }
-        } else {
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
+            return;
         }
-    }
 
 
-
-    public void handleFriendsCommand(String chatId) {
-        AppUser currentUser = sessionService.getCurrentUser(chatId);
-        if (currentUser != null) {
-            messageSender.sendFriendsMenu(chatId, friendshipService.getFriends(currentUser.getUsername()));
-        } else {
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
-        }
-    }
-
-    // Обработка команды добавления друга
-    public void handleAddFriendCommand(String chatId, String messageText) {
-        // Сообщаем пользователю, что нужно ввести имя друга
-        messageSender.sendMessage(chatId, "Введите имя друга для добавления:");
-        // Устанавливаем состояние ожидания имени друга
-        sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_FRIEND_USERNAME);
-    }
 
     public void handleIncomingRequestsCommand(String chatId) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
@@ -398,8 +452,6 @@ public class    CommandHandler {
         }
     }
 
-
-
     public void handleOutgoingRequestsCommand(String chatId) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
         if (currentUser != null) {
@@ -408,26 +460,29 @@ public class    CommandHandler {
             messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
         }
     }
+
+
     @Transactional
     public void handleWatchedMoviesCommand(String chatId) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
         if (currentUser != null) {
             // Явно получаем обновленный список из базы данных
-            List<Movie> watchedMovies = appUserService.getWatchedMoviesByUser(currentUser.getId());
+            List<Movie> watchedMovies = userMovieService.getWatchedMoviesByUser(currentUser.getId());
             if (watchedMovies.isEmpty()) {
                 messageSender.sendMessage(chatId, "У вас нет просмотренных фильмов.");
+                messageSender.sendMainMenu(chatId);
             } else {
                 // Отправляем актуальный список
                 showWatchedMoviesList(chatId, watchedMovies);
-                sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION);
+                sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_SELECTION_USER);
             }
         } else {
             messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
         }
+
     }
-    public void handleMainMenuCommand(String chatId) {
-        messageSender.sendMainMenu(chatId);
-    }
+
+
 
     public void handleFriendsMenu(String chatId) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
@@ -439,34 +494,44 @@ public class    CommandHandler {
     }
 
 
-    public void handleRemovePlannedMovieCommand(String chatId, String imdbId) {
+
+    public void handleAcceptRequest(String chatId, String friendUsername) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
         if (currentUser != null) {
-            try {
-                appUserService.removePlannedMovie(currentUser.getUsername(), imdbId);
-                messageSender.sendMessage(chatId, "Фильм успешно удален из списка запланированных.");
-            } catch (IllegalArgumentException e) {
-                messageSender.sendMessage(chatId, e.getMessage());
-            }
-            // Возвращаем пользователя в главное меню после удаления
-            sessionService.clearUserState(chatId);
-            messageSender.sendMainMenu(chatId);
+            friendshipService.acceptFriendRequest(currentUser.getUsername(), friendUsername);
+            messageSender.sendMessage(chatId, "Запрос от " + friendUsername + " принят.");
         } else {
             messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
         }
     }
 
-  /*  public void handleMovieSelection(String chatId, String movieId) {
+    public void handleRejectRequest(String chatId, String friendUsername) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        if (currentUser != null) {
+            friendshipService.rejectFriendRequest(currentUser.getUsername(), friendUsername);
+            messageSender.sendMessage(chatId, "Запрос от " + friendUsername + " отклонен.");
+            messageSender.sendMainMenu(chatId);
+        } else {
+            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
+        }
+    }
+    public void handleDeleteFriend(String chatId) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        if (currentUser != null) {
+            sessionService.setUserState(chatId, UserStateEnum.AWAITING_FRIEND_DELETION);
+            messageSender.sendMessage(chatId, "Введите имя друга для удаления:");
+        } else {
+            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
+        }
+    }
+
+    public void processDeleteFriend(String chatId, String friendUsername) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
         if (currentUser != null) {
             try {
-                Movie movie = omdbService.getMovieByImdbId(movieId); // Получение фильма по ID
-                if (movie != null) {
-                    appUserService.addWatchedMovie(currentUser.getUsername(), movie);
-                    messageSender.sendMessage(chatId, "Фильм " + movie.getTitle() + " добавлен в ваш список просмотренных.");
-                } else {
-                    messageSender.sendMessage(chatId, "Фильм не найден.");
-                }
+                friendshipService.removeFriendship(currentUser.getUsername(), friendUsername);
+                messageSender.sendMessage(chatId, "Дружба с " + friendUsername + " была успешно удалена. Статус предложенных фильмов обновлен.");
+                messageSender.sendMainMenu(chatId);
             } catch (IllegalArgumentException e) {
                 messageSender.sendMessage(chatId, "Ошибка: " + e.getMessage());
             }
@@ -475,7 +540,69 @@ public class    CommandHandler {
         }
     }
 
-   */
+    public void handleCancelRequest(String chatId, String friendUsername) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        if (currentUser != null) {
+            friendshipService.cancelFriendRequest(currentUser.getUsername(), friendUsername);
+            messageSender.sendMessage(chatId, "Запрос в друзья для " + friendUsername + " отменен.");
+            messageSender.sendMainMenu(chatId);
+        } else {
+            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
+        }
+    }
+
+    public void handleSetHypeCommand(String chatId, String imdbId) {
+        Movie selectedMovie = movieService.findMovieByImdbId(imdbId)
+                .orElseThrow(() -> new IllegalArgumentException("Фильм не найден"));
+
+        sessionService.setSelectedMovie(chatId, selectedMovie);
+        messageSender.sendMessage(chatId, "Введите уровень ажиотажа от 0 до 100 для выбранного фильма:");
+        sessionService.setUserState(chatId, UserStateEnum.AWAITING_MOVIE_HYPE);
+    }
+
+    public void processMovieHype(String chatId, String hypeText) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        Movie selectedMovie = sessionService.getSelectedMovie(chatId);
+        if (selectedMovie == null) {
+            messageSender.sendMessage(chatId, "Ошибка: не выбран фильм для оценки ажиотажа.");
+            sessionService.clearUserState(chatId);
+            return;
+        }
+
+        try {
+            int hype = Integer.parseInt(hypeText);
+            if (hype < 0 || hype > 100) {
+                messageSender.sendMessage(chatId, "Некорректное значение. Введите ажиотаж от 0 до 100.");
+                return;
+            }
+
+            AppUser user = sessionService.getCurrentUser(chatId);
+            if (user != null) {
+                userMovieService.addHype(currentUser, selectedMovie, hype);
+                messageSender.sendMessage(chatId, "Уровень ажиотажа успешно добавлен.");
+            }
+        } catch (NumberFormatException e) {
+            messageSender.sendMessage(chatId, "Некорректный формат числа. Введите значение от 0 до 100.");
+        }
+
+        sessionService.clearUserState(chatId);
+        messageSender.sendMainMenu(chatId);
+    }
+
+    @Transactional
+    public void handleDeletePlannedMovie(String chatId, String imdbId) {
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+        Movie movie = movieService.findMovieByImdbId(imdbId)
+                .orElseThrow(() -> new IllegalArgumentException("Фильм не найден"));
+
+        userMovieService.removePlannedMovieAndUpdateFriends(currentUser, movie);
+        messageSender.sendMessage(chatId, "Фильм успешно удален из запланированных и обновлен статус у друзей.");
+        sessionService.clearUserState(chatId);
+        messageSender.sendMainMenu(chatId);
+    }
+
+
+
 
     @CacheEvict(value = "moviesCache", allEntries = true)
     public void clearAllCaches() {
