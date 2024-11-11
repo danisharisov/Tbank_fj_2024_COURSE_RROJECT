@@ -1,15 +1,21 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.models.user;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.UserMovie;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.HashSet;
 import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "app_user")
 @EqualsAndHashCode(exclude = "movies")
@@ -28,7 +34,7 @@ public class AppUser {
     @Column(unique = true)
     private String telegramId; // Telegram ID пользователя, если требуется
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "friendship",
             joinColumns = @JoinColumn(name = "user_id"),

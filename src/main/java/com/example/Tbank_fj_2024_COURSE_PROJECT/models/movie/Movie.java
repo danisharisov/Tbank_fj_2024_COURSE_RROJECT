@@ -1,10 +1,16 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "movie", uniqueConstraints = @UniqueConstraint(columnNames = "imdbId"))
 public class Movie {
