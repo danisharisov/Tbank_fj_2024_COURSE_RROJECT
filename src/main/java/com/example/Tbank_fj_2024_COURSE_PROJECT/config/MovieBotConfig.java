@@ -1,5 +1,6 @@
-package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram;
+package com.example.Tbank_fj_2024_COURSE_PROJECT.config;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.MovieBot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

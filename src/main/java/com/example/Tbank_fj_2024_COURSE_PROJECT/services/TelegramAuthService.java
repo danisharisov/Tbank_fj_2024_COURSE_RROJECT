@@ -2,6 +2,7 @@ package com.example.Tbank_fj_2024_COURSE_PROJECT.services;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.repositories.AppUserRepository;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

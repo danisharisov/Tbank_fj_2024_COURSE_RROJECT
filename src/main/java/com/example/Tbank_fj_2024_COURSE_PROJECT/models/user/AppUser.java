@@ -48,4 +48,10 @@ public class AppUser {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Set<UserMovie> plannedMovies = new HashSet<>();
+
+    public AppUser(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+
 }
