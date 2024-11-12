@@ -1,8 +1,10 @@
-package com.example.Tbank_fj_2024_COURSE_PROJECT.services;
+package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -54,15 +56,40 @@ public class SessionService {
         logger.info("Фильм успешно сохранен для chatId {}: {}", chatId, movie);
     }
 
+    public void setContext(String chatId,String context) {
+        UserState userState = getUserState(chatId);
+        userState.setContext(context);
+    }
+
+    public String getContext(String chatId) {
+        UserState userState = getUserState(chatId);
+        return userState.getContext();
+    }
+
+
+    public void setMovieIsPlanned(String chatId, boolean isPlanned) {
+        UserState userState = getUserState(chatId);
+        userState.setMovieIsPlanned(isPlanned);
+        logger.info("Категория фильма для chatId {}: {}", chatId);
+    }
+
     public Movie getSelectedMovie(String chatId) {
         return getUserState(chatId).getSelectedMovie();
     }
 
-    @Data
+    @Getter
+    @Setter
     public static class UserState {
         private UserStateEnum state;
         private String context;
         private Movie selectedMovie;
+
+
+        public boolean isMovieIsPlanned() {
+            return movieIsPlanned;
+        }
+
+        private boolean movieIsPlanned;
 
         public UserState(UserStateEnum state, String context) {
             this.state = state;

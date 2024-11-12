@@ -42,13 +42,28 @@ public class UserMovieService {
 
     @Transactional
     public void addWatchedMovie(AppUser user, Movie movie, String chatId) {
-        UserMovie userMovie = findOrCreateUserMovie(user, movie, MovieStatus.UNWATCHED);
+        Optional<UserMovie> existingMovie = userMovieRepository.findByUserAndMovieAndStatus(user, movie, MovieStatus.WANT_TO_WATCH);
 
-        if (userMovie.getStatus() == MovieStatus.WATCHED) {
-            messageSender.sendMessage(chatId, "Фильм \"" + movie.getTitle() + "\" уже добавлен в ваш список просмотренных.");
-            return;
+        UserMovie userMovie;
+        if (existingMovie.isPresent()) {
+            userMovie = existingMovie.get();
+            updateMovieStatus(userMovie, MovieStatus.WATCHED);
+        } else {
+            userMovie = findOrCreateUserMovie(user, movie, MovieStatus.UNWATCHED);
+            if (userMovie.getStatus() == MovieStatus.WATCHED) {
+                messageSender.sendMessage(chatId, "Фильм \"" + movie.getTitle() + "\" уже добавлен в ваш список просмотренных.");
+                return;
+            }
+            updateMovieStatus(userMovie, MovieStatus.WATCHED);
         }
-        updateMovieStatus(userMovie, MovieStatus.WATCHED);
+
+        // Обновляем статус фильма на UNWATCHED у всех друзей, если он был предложен
+        List<AppUser> friends = friendshipService.getFriends(user.getUsername());
+        for (AppUser friend : friends) {
+            updateFriendMovieStatus(friend, movie, MovieStatus.UNWATCHED);
+        }
+
+        messageSender.sendMessage(chatId, "Фильм \"" + movie.getTitle() + "\" добавлен в просмотренные.");
     }
 
     private UserMovie findOrCreateUserMovie(AppUser user, Movie movie, MovieStatus initialStatus) {
@@ -69,6 +84,15 @@ public class UserMovieService {
         userMovieRepository.save(userMovie);
     }
 
+
+    private void updateFriendMovieStatus(AppUser friend, Movie movie, MovieStatus status) {
+        userMovieRepository.findByUserAndMovieAndStatus(friend, movie, MovieStatus.WANT_TO_WATCH_BY_FRIEND)
+                .ifPresent(friendMovie -> {
+                    friendMovie.setStatus(status);
+                    userMovieRepository.save(friendMovie);
+                });
+    }
+
     public void setMovieStatusForUser(AppUser user, Movie movie, MovieStatus newStatus) {
         Optional<UserMovie> userMovieOpt = userMovieRepository.findByUserAndMovie(user, movie);
         if (userMovieOpt.isPresent()) {
@@ -79,20 +103,36 @@ public class UserMovieService {
     }
     @Transactional
     public void addPlannedMovie(AppUser user, Movie movie) {
-        Movie existingMovie = movieService.findOrSaveMovieByImdbId(movie.getImdbId(), movie);
+        Movie existingMovieInstance = movieService.findOrSaveMovieByImdbId(movie.getImdbId(), movie);
 
-        if (userMovieRepository.findByUserAndMovieAndStatus(user, existingMovie, MovieStatus.WANT_TO_WATCH).isPresent()) {
+        // Проверка, если фильм уже предложен другом
+        if (userMovieRepository.findByUserAndMovieAndStatus(user, existingMovieInstance, MovieStatus.WANT_TO_WATCH_BY_FRIEND).isPresent()) {
+            logger.info("Фильм уже предложен пользователю {} другом и находится в предложенных.", user.getUsername());
+            messageSender.sendMessage(user.getTelegramId(), "Фильм уже предложен вашим другом. Вы можете добавить его в просмотренные.");
+            return;
+        }
+
+        // Проверка, если фильм уже в запланированных
+        if (userMovieRepository.findByUserAndMovieAndStatus(user, existingMovieInstance, MovieStatus.WANT_TO_WATCH).isPresent()) {
             logger.info("Фильм уже добавлен пользователем: {}", user.getUsername());
             return;
         }
 
+        // Если фильм не предложен и не запланирован, добавляем его в запланированные
         UserMovie userMovie = new UserMovie();
         userMovie.setUser(user);
-        userMovie.setMovie(existingMovie);
+        userMovie.setMovie(existingMovieInstance);
         userMovie.setStatus(MovieStatus.WANT_TO_WATCH);
         userMovieRepository.save(userMovie);
         logger.info("Фильм добавлен в запланированные для пользователя: {}", user.getUsername());
+
+        // Предлагаем фильм друзьям пользователя
+        List<AppUser> friends = friendshipService.getFriends(user.getUsername());
+        for (AppUser friend : friends) {
+            addSuggestedMovie(friend, existingMovieInstance, user.getUsername());
+        }
     }
+
 
     @Transactional
     public void addRating(String username, String imdbId, double rating) {
@@ -156,6 +196,11 @@ public class UserMovieService {
     }
 
     public void addSuggestedMovie(AppUser friend, Movie movie, String suggestedByUsername) {
+        if (userMovieRepository.findByUserAndMovieAndStatus(friend, movie, MovieStatus.WANT_TO_WATCH_BY_FRIEND).isPresent()) {
+            logger.info("Фильм уже предложен пользователю {} другом {}", friend.getUsername(), suggestedByUsername);
+            return;
+        }
+
         UserMovie suggestedMovie = new UserMovie();
         suggestedMovie.setUser(friend);
         suggestedMovie.setMovie(movie);
@@ -172,14 +217,6 @@ public class UserMovieService {
         userMovieRepository.save(userMovie);
 
         friendshipService.getFriends(user.getUsername()).forEach(friend -> updateFriendMovieStatus(friend, movie, MovieStatus.UNWATCHED));
-    }
-
-    private void updateFriendMovieStatus(AppUser friend, Movie movie, MovieStatus status) {
-        userMovieRepository.findByUserAndMovieAndStatus(friend, movie, MovieStatus.WANT_TO_WATCH_BY_FRIEND)
-                .ifPresent(friendMovie -> {
-                    friendMovie.setStatus(status);
-                    userMovieRepository.save(friendMovie);
-                });
     }
 
     @Transactional
@@ -209,5 +246,13 @@ public class UserMovieService {
                 .stream()
                 .map(UserMovie::getMovie)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void removeWatchedMovie(AppUser user, Movie movie) {
+        UserMovie userMovie = userMovieRepository.findByUserAndMovieAndStatus(user, movie, MovieStatus.WATCHED)
+                .orElseThrow(() -> new IllegalArgumentException("Фильм не найден в списке просмотренных."));
+        userMovie.setStatus(MovieStatus.UNWATCHED);
+        userMovieRepository.save(userMovie);
     }
 }

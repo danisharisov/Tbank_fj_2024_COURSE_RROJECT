@@ -11,10 +11,12 @@ import java.util.Optional;
 public class MovieService {
 
     private final MovieRepository movieRepository;
+    private final OmdbService omdbService;
 
     @Autowired
-    public MovieService(MovieRepository movieRepository) {
+    public MovieService(MovieRepository movieRepository, OmdbService omdbService) {
         this.movieRepository = movieRepository;
+        this.omdbService = omdbService;
     }
     public Optional<Movie> findMovieByImdbId(String imdbId) {
         return movieRepository.findByImdbId(imdbId);
@@ -31,6 +33,21 @@ public class MovieService {
     public Movie getMovieByImdbId(String imdbId) {
         return movieRepository.findByImdbId(imdbId)
                 .orElseThrow(() -> new IllegalArgumentException("Фильм с таким IMDb ID не найден: " + imdbId));
+    }
+
+    public Movie fetchAndSaveMovie(String imdbId) {
+        // Проверяем, есть ли фильм в базе данных
+        Optional<Movie> optionalMovie = movieRepository.findByImdbId(imdbId);
+        if (optionalMovie.isPresent()) {
+            return optionalMovie.get();
+        }
+
+        // Если фильма нет в базе данных, получаем его из внешнего API (OMDb API)
+        Movie movie = omdbService.getMovieByImdbId(imdbId);
+        if (movie != null) {
+            movieRepository.save(movie);
+        }
+        return movie;
     }
 
 }

@@ -35,7 +35,6 @@ public class AppUserService {
             throw new IllegalArgumentException("Пользователь с таким именем уже существует.");
         }
         newUser.setTelegramId(chatId);
-        // Хэшируем пароль перед сохранением
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
         appUserRepository.save(newUser);
         logger.info("Новый пользователь зарегистрирован: {}", newUser.getUsername());
