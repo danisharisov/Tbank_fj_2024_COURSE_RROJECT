@@ -17,12 +17,18 @@ import java.util.List;
 public class AddFriendCommand implements Command {
 
     private static final Logger logger = LoggerFactory.getLogger(AddFriendCommand.class);
+
+    private final SessionService sessionService;
+
+    private final  FriendshipService friendshipService;
+
+    private final MessageSender messageSender;
     @Autowired
-    private SessionService sessionService;
-    @Autowired
-    private  FriendshipService friendshipService;
-    @Autowired
-    private MessageSender messageSender;
+    public AddFriendCommand(SessionService sessionService, FriendshipService friendshipService, MessageSender messageSender) {
+        this.sessionService = sessionService;
+        this.friendshipService = friendshipService;
+        this.messageSender = messageSender;
+    }
 
 
     @Override

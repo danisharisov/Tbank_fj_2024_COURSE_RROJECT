@@ -18,49 +18,40 @@ public class CallbackHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackHandler.class);
 
-    @Autowired
-    private SessionService sessionService;
-
-    @Autowired
-    private MessageSender messageSender;
-
-    @Autowired
-    private DeleteMovieCommand deleteMovieCommand;
-    @Autowired
-    private DeletePlannedMovieCommand deletePlannedMovieCommand;
-
-    @Autowired
-    private SetHypeCommand setHypeCommand;
-
-    @Autowired
-    private SelectMovieCommand selectMovieCommand;
-
-    @Autowired
-    private AddMovieCommand addMovieCommand;
-
-    @Autowired
-    private FriendsMenuCommand friendsMenuCommand;
-
-    @Autowired
-    private SendFriendRequestCommand sendFriendRequestCommand;
-
-    @Autowired
-    private IncomingRequestsCommand incomingRequestsCommand;
-
-    @Autowired
-    private OutgoingRequestsCommand outgoingRequestsCommand;
-
-    @Autowired
-    private ViewWatchedMoviesCommand viewWatchedMoviesCommand;
-
-    @Autowired
-    private ViewPlannedMoviesCommand viewPlannedMoviesCommand;
-    @Autowired
-    private AcceptFriendRequestCommand acceptFriendRequestCommand;
-    @Autowired
-    private RejectFriendRequestCommand rejectFriendRequestCommand;
-    @Autowired
-    CancelFriendRequestCommand cancelFriendRequestCommand;
+    private final SessionService sessionService;
+    private final  MessageSender messageSender;
+    private final DeleteMovieCommand deleteMovieCommand;
+    private final DeletePlannedMovieCommand deletePlannedMovieCommand;
+    private final SelectMovieCommand selectMovieCommand;
+    private final ViewWatchedMoviesCommand viewWatchedMoviesCommand;
+    private final ViewPlannedMoviesCommand viewPlannedMoviesCommand;
+    private final FriendsMenuCommand friendsMenuCommand;
+    private final IncomingRequestsCommand incomingRequestsCommand;
+    private final OutgoingRequestsCommand outgoingRequestsCommand;
+    private final RejectFriendRequestCommand rejectFriendRequestCommand;
+    private final CancelFriendRequestCommand cancelFriendRequestCommand;
+    private final AcceptFriendRequestCommand acceptFriendRequestCommand;
+@Autowired
+    public CallbackHandler(SessionService sessionService, MessageSender messageSender, DeleteMovieCommand deleteMovieCommand,
+                           DeletePlannedMovieCommand deletePlannedMovieCommand, SelectMovieCommand selectMovieCommand,
+                           ViewWatchedMoviesCommand viewWatchedMoviesCommand, ViewPlannedMoviesCommand viewPlannedMoviesCommand,
+                           FriendsMenuCommand friendsMenuCommand, IncomingRequestsCommand incomingRequestsCommand,
+                           OutgoingRequestsCommand outgoingRequestsCommand, RejectFriendRequestCommand rejectFriendRequestCommand,
+                           CancelFriendRequestCommand cancelFriendRequestCommand, AcceptFriendRequestCommand acceptFriendRequestCommand) {
+        this.sessionService = sessionService;
+        this.messageSender = messageSender;
+        this.deleteMovieCommand = deleteMovieCommand;
+        this.deletePlannedMovieCommand = deletePlannedMovieCommand;
+        this.selectMovieCommand = selectMovieCommand;
+        this.viewWatchedMoviesCommand = viewWatchedMoviesCommand;
+        this.viewPlannedMoviesCommand = viewPlannedMoviesCommand;
+        this.friendsMenuCommand = friendsMenuCommand;
+        this.incomingRequestsCommand = incomingRequestsCommand;
+        this.outgoingRequestsCommand = outgoingRequestsCommand;
+        this.rejectFriendRequestCommand = rejectFriendRequestCommand;
+        this.cancelFriendRequestCommand = cancelFriendRequestCommand;
+        this.acceptFriendRequestCommand = acceptFriendRequestCommand;
+    }
 
 
     public void handleCallbackQuery(String chatId, String callbackData) {

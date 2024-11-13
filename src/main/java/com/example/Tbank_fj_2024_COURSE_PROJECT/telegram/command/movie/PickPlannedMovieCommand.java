@@ -17,12 +17,17 @@ import java.util.List;
 @Component
 public class PickPlannedMovieCommand implements Command {
     private static final Logger logger = LoggerFactory.getLogger(PickPlannedMovieCommand.class);
+    private final SessionService sessionService;
+    private final UserMovieService userMovieService;
+    private final MessageSender messageSender;
+
     @Autowired
-    private SessionService sessionService;
-    @Autowired
-    private UserMovieService userMovieService;
-    @Autowired
-    private MessageSender messageSender;
+    public PickPlannedMovieCommand(SessionService sessionService, UserMovieService userMovieService,
+                                     MessageSender messageSender) {
+        this.sessionService = sessionService;
+        this.userMovieService = userMovieService;
+        this.messageSender = messageSender;
+    }
     @Override
     public void execute(String chatId, List<String> args) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
