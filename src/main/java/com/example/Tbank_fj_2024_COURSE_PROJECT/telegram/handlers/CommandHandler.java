@@ -7,33 +7,46 @@ import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie.*;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 
 @Component
 public class CommandHandler {
-    @Autowired
-    private SessionService sessionService;
-    @Autowired
-    private  MessageSender messageSender;
-    @Autowired
-    private AddMovieCommand addMovieCommand;
-    @Autowired
-    private  UnloggedStateHandler unloggedStateHandler;
-    @Autowired
-    private PickWatchedMovieCommand pickWatchedMovieCommand;
-    @Autowired
-    private PickPlannedMovieCommand pickPlannedMovieCommand;
-    @Autowired
-    private RateMovieCommand rateMovieCommand;
-    @Autowired
-    private SetHypeCommand setHypeCommand;
-    @Autowired
-    private DeleteFriendCommand deleteFriendCommand;
-    @Autowired
-    private AddFriendCommand addFriendCommand;
+
+    private final SessionService sessionService;
+
+    private final  MessageSender messageSender;
+
+    private final AddMovieCommand addMovieCommand;
+
+    private final  UnloggedStateHandler unloggedStateHandler;
+
+    private final PickWatchedMovieCommand pickWatchedMovieCommand;
+
+    private final PickPlannedMovieCommand pickPlannedMovieCommand;
+
+    private final RateMovieCommand rateMovieCommand;
+    private final SetHypeCommand setHypeCommand;
+    private final DeleteFriendCommand deleteFriendCommand;
+    private final AddFriendCommand addFriendCommand;
+
+    public CommandHandler(SessionService sessionService, MessageSender messageSender,
+                          AddMovieCommand addMovieCommand, UnloggedStateHandler unloggedStateHandler,
+                          PickWatchedMovieCommand pickWatchedMovieCommand, PickPlannedMovieCommand pickPlannedMovieCommand,
+                          RateMovieCommand rateMovieCommand, SetHypeCommand setHypeCommand, DeleteFriendCommand deleteFriendCommand,
+                          AddFriendCommand addFriendCommand) {
+        this.sessionService = sessionService;
+        this.messageSender = messageSender;
+        this.addMovieCommand = addMovieCommand;
+        this.unloggedStateHandler = unloggedStateHandler;
+        this.pickWatchedMovieCommand = pickWatchedMovieCommand;
+        this.pickPlannedMovieCommand = pickPlannedMovieCommand;
+        this.rateMovieCommand = rateMovieCommand;
+        this.setHypeCommand = setHypeCommand;
+        this.deleteFriendCommand = deleteFriendCommand;
+        this.addFriendCommand = addFriendCommand;
+    }
 
     public void handleStateBasedCommand(String chatId, String messageText, UserStateEnum state) {
         switch (state) {
@@ -62,24 +75,10 @@ public class CommandHandler {
                 addFriendCommand.execute(chatId, Collections.singletonList(messageText));
                 sessionService.clearUserState(chatId);
                 break;
-          /*
-            case AWAITING_PLANNED_MOVIE_SELECTION:
-                handleMovieSelectionByIndex(chatId, messageText, true);
-                break;
-            case AWAITING_MOVIE_HYPE:
-                processMovieHype(chatId, messageText);
-                break;
-            case AWAITING_MOVIE_RATING:
-                processMovieRating(chatId, messageText);
-                break;
-            case DEFAULT_LOGGED:
-                messageSender.sendMainMenu(chatId);
-                break;*/
             default:
                 messageSender.sendMessage(chatId, "Неизвестное состояние.");
                 break;
         }
     }
-
 
 }

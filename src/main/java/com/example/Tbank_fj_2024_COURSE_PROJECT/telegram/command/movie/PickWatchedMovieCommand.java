@@ -18,12 +18,17 @@ import java.util.List;
 
 @Component
 public class PickWatchedMovieCommand implements Command {
+    private final SessionService sessionService;
+    private final UserMovieService userMovieService;
+    private final MessageSender messageSender;
+
     @Autowired
-    private  SessionService sessionService;
-    @Autowired
-    private UserMovieService userMovieService;
-    @Autowired
-    private MessageSender messageSender;
+    public PickWatchedMovieCommand(SessionService sessionService, UserMovieService userMovieService,
+                                   MessageSender messageSender) {
+        this.sessionService = sessionService;
+        this.userMovieService = userMovieService;
+        this.messageSender = messageSender;
+    }
     @Override
     public void execute(String chatId, List<String> args) {
 

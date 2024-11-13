@@ -13,14 +13,19 @@ import java.util.List;
 @Component
 public class RejectFriendRequestCommand implements Command {
 
+    private final SessionService sessionService;
+    private final FriendshipService friendshipService;
+
+    private final MessageSender messageSender;
+    private final FriendsMenuCommand friendsMenuCommand;
     @Autowired
-    private SessionService sessionService;
-    @Autowired
-    private FriendshipService friendshipService;
-    @Autowired
-    private MessageSender messageSender;
-    @Autowired
-    private FriendsMenuCommand friendsMenuCommand;
+    public RejectFriendRequestCommand(SessionService sessionService, FriendshipService friendshipService,
+                                      MessageSender messageSender, FriendsMenuCommand friendsMenuCommand) {
+        this.sessionService = sessionService;
+        this.friendshipService = friendshipService;
+        this.messageSender = messageSender;
+        this.friendsMenuCommand = friendsMenuCommand;
+    }
 
     @Override
     public void execute(String chatId, List<String> args) {
