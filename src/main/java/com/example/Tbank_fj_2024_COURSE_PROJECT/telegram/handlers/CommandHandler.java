@@ -1,4 +1,3 @@
-// CommandHandler.java
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.AddFriendCommand;

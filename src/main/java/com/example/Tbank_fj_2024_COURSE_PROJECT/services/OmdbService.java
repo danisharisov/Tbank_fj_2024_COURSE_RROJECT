@@ -66,7 +66,7 @@ public class OmdbService {
         return Collections.emptyList();
     }
 
-    private Movie mapOmdbResponseToMovie(OmdbMovieResponse omdbMovieResponse) {
+    protected Movie mapOmdbResponseToMovie(OmdbMovieResponse omdbMovieResponse) {
         Movie movie = new Movie();
         movie.setTitle(omdbMovieResponse.getTitle());
         movie.setYear(omdbMovieResponse.getYear());

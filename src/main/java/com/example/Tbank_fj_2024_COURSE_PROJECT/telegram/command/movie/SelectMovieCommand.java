@@ -1,4 +1,3 @@
-// command/SelectMovieCommand.java
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
@@ -65,7 +64,6 @@ public class SelectMovieCommand implements Command {
                 messageSender.sendMessage(chatId, "Фильм добавлен в запланированные.");
             } else {
                 userMovieService.addWatchedMovie(currentUser, movie, chatId);
-                messageSender.sendMessage(chatId, "Фильм добавлен в просмотренные.");
             }
             sessionService.clearUserState(chatId);
             messageSender.sendMainMenu(chatId);

@@ -3,7 +3,6 @@ package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.services.FriendshipService;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.FriendsMenuCommand;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.springframework.beans.factory.annotation.Autowired;

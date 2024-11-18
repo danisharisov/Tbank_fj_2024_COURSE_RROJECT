@@ -1,7 +1,7 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.parser.user.LoginCommand;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.parser.user.RegisterCommand;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.user.LoginCommand;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.user.RegisterCommand;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.parser.CommandParser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.parser.ParsedCommand;

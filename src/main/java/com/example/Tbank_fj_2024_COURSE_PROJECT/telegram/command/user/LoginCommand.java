@@ -1,4 +1,4 @@
-package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.parser.user;
+package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.user;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.services.AppUserService;
