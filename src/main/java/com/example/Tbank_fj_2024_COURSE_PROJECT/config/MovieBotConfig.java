@@ -27,7 +27,14 @@ public class MovieBotConfig {
     public TelegramBotsApi telegramBotsApi() {
         try {
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-            botsApi.registerBot(movieBot);
+
+            SetWebhook setWebhook = SetWebhook.builder()
+                    .url(webhookUrl)
+                    .build();
+
+            botsApi.registerBot(movieBot, setWebhook);
+
+            logger.info("Bot registered with webhook URL: {}", webhookUrl);
             return botsApi;
         } catch (TelegramApiException e) {
             logger.error("Failed to register bot", e);
