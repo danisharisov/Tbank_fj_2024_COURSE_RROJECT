@@ -1,8 +1,8 @@
-package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram;
+package com.example.Tbank_fj_2024_COURSE_PROJECT;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CallbackHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CommandHandler;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.slf4j.Logger;
@@ -11,10 +11,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.bots.TelegramWebhookBot;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 @Component
-public class MovieBot extends TelegramLongPollingBot {
+public class MovieBot extends TelegramWebhookBot {
 
     private static final Logger logger = LoggerFactory.getLogger(MovieBot.class);
 
@@ -31,8 +33,36 @@ public class MovieBot extends TelegramLongPollingBot {
         this.messageSender = messageSender;
     }
 
+    private void handleTextMessage(String chatId, String messageText) {
+        SessionService.UserState userState = sessionService.getUserState(chatId);
+        if (userState != null) {
+            commandHandler.handleStateBasedCommand(chatId, messageText, userState.getState());
+        } else {
+            // Если состояние не определено, отправить пользователя в начальное состояние
+            sessionService.setUserState(chatId, UserStateEnum.DEFAULT_UNLOGGED);
+            messageSender.sendMessage(chatId, "Вы не авторизованы. Пожалуйста, используйте /login или /register.");
+        }
+    }
+
+
+    @Value("${telegram.bot.username}")
+    private String botUsername;
+
+    @Value("${telegram.bot.token}")
+    private String botToken;
+
     @Override
-    public void onUpdateReceived(Update update) {
+    public String getBotUsername() {
+        return botUsername;
+    }
+
+    @Override
+    public String getBotToken() {
+        return botToken;
+    }
+
+    @Override
+    public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
@@ -75,37 +105,14 @@ public class MovieBot extends TelegramLongPollingBot {
         } else {
             logger.warn("Received unsupported update type: {}", update);
         }
+        return null;
     }
 
 
-
-
-
-    private void handleTextMessage(String chatId, String messageText) {
-        SessionService.UserState userState = sessionService.getUserState(chatId);
-        if (userState != null) {
-            commandHandler.handleStateBasedCommand(chatId, messageText, userState.getState());
-        } else {
-            // Если состояние не определено, отправить пользователя в начальное состояние
-            sessionService.setUserState(chatId, UserStateEnum.DEFAULT_UNLOGGED);
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Пожалуйста, используйте /login или /register.");
-        }
-    }
-
-
-    @Value("${telegram.bot.username}")
-    private String botUsername;
-
-    @Value("${telegram.bot.token}")
-    private String botToken;
 
     @Override
-    public String getBotUsername() {
-        return botUsername;
+    public String getBotPath() {
+        return "/webhook";
     }
 
-    @Override
-    public String getBotToken() {
-        return botToken;
-    }
 }

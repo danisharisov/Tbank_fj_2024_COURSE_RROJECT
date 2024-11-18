@@ -100,7 +100,7 @@ public class CallbackHandler {
                 viewPlannedMoviesCommand.execute(chatId,null);
                 break;
             case "add_hype":
-                messageSender.sendMessage(chatId, "Введите уровень ажиотажа от 0 до 100 для выбранного фильма:");
+                messageSender.sendMessage(chatId, "Введите уровень ажиотажа от 1 до 3 для выбранного фильма:");
                 sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_HYPE);
                 break;
             case "friends_menu":

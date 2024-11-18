@@ -1,6 +1,7 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.controllers;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.MovieBot;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.MovieBot;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,7 +17,8 @@ public class WebhookController {
     }
 
     @PostMapping("/webhook")
-    public void onUpdateReceived(@RequestBody Update update) {
-        movieBot.onUpdateReceived(update);
+    public ResponseEntity<String> onUpdateReceived(@RequestBody Update update) {
+        movieBot.onWebhookUpdateReceived(update);
+        return ResponseEntity.ok("Webhook received");
     }
 }

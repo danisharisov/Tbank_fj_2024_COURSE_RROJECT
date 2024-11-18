@@ -47,15 +47,15 @@ public class SetHypeCommand implements Command {
         }
 
         if (args.isEmpty()) {
-            messageSender.sendMessage(chatId, "Введите уровень ажиотажа от 0 до 100:");
+            messageSender.sendMessage(chatId, "Введите уровень ажиотажа от 1 до 3:");
             sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_HYPE);
             return;
         }
 
         try {
             int hype = Integer.parseInt(args.get(0));
-            if (hype < 0 || hype > 100) {
-                messageSender.sendMessage(chatId, "Некорректное значение. Введите ажиотаж от 0 до 100.");
+            if (hype < 1 || hype > 3) {
+                messageSender.sendMessage(chatId, "Некорректное значение. Введите ажиотаж от 1 до 3.");
                 return;
             }
 

@@ -36,13 +36,11 @@ public class MovieService {
     }
 
     public Movie fetchAndSaveMovie(String imdbId) {
-        // Проверяем, есть ли фильм в базе данных
         Optional<Movie> optionalMovie = movieRepository.findByImdbId(imdbId);
         if (optionalMovie.isPresent()) {
             return optionalMovie.get();
         }
 
-        // Если фильма нет в базе данных, получаем его из внешнего API (OMDb API)
         Movie movie = omdbService.getMovieByImdbId(imdbId);
         if (movie != null) {
             movieRepository.save(movie);

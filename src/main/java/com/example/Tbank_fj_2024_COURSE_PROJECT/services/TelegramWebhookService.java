@@ -18,4 +18,5 @@ public class TelegramWebhookService {
         RestTemplate restTemplate = new RestTemplate();
         restTemplate.getForObject(url, String.class);
     }
+
 }
