@@ -16,7 +16,7 @@ import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 @Component
-public class MovieBot extends TelegramLongPollingBot {
+public class MovieBot extends TelegramWebhookBot {
 
     private static final Logger logger = LoggerFactory.getLogger(MovieBot.class);
 
@@ -60,23 +60,9 @@ public class MovieBot extends TelegramLongPollingBot {
     public String getBotToken() {
         return botToken;
     }
-/*
+
     @Override
     public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
-
-    }
-
-
-
-    @Override
-    public String getBotPath() {
-        return "/webhook";
-    }
-
- */
-
-    @Override
-    public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
@@ -119,5 +105,14 @@ public class MovieBot extends TelegramLongPollingBot {
         } else {
             logger.warn("Received unsupported update type: {}", update);
         }
+        return null;
     }
+
+
+
+    @Override
+    public String getBotPath() {
+        return "/webhook";
+    }
+
 }
