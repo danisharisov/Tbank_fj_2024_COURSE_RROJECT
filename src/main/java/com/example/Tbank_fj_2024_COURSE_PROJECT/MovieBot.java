@@ -1,7 +1,9 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CallbackHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CommandHandler;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.UnloggedStateHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
@@ -24,23 +26,39 @@ public class MovieBot extends TelegramLongPollingBot {
     private final CallbackHandler callbackHandler;
     private final SessionService sessionService;
     private final MessageSender messageSender;
+    private final UnloggedStateHandler unloggedStateHandler;
 
     @Autowired
-    public MovieBot(CommandHandler commandHandler, CallbackHandler callbackHandler, SessionService sessionService, MessageSender messageSender) {
+    public MovieBot(CommandHandler commandHandler, CallbackHandler callbackHandler,
+                    SessionService sessionService, MessageSender messageSender,
+                    UnloggedStateHandler unloggedStateHandler) {
         this.commandHandler = commandHandler;
         this.callbackHandler = callbackHandler;
         this.sessionService = sessionService;
         this.messageSender = messageSender;
+        this.unloggedStateHandler = unloggedStateHandler;
     }
 
-    private void handleTextMessage(String chatId, String messageText) {
+    private void handleTextMessage(String chatId, String messageText, String username) {
+        // Получаем состояние пользователя
         SessionService.UserState userState = sessionService.getUserState(chatId);
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+
+        if (currentUser == null) {
+            // Если пользователь не авторизован, обрабатываем команду /start
+            if ("/start".equals(messageText)) {
+                unloggedStateHandler.handleUnloggedState(chatId, messageText, username);
+            } else {
+                messageSender.sendMessage(chatId, "Вы еще не авторизованы. Нажмите /start, чтобы зарегистрироваться.");
+            }
+            return;
+        }
+
+        // Если пользователь авторизован, передаем команду в CommandHandler
         if (userState != null) {
-            commandHandler.handleStateBasedCommand(chatId, messageText, userState.getState());
+            commandHandler.handleStateBasedCommand(chatId, messageText, userState.getState(), username);
         } else {
-            // Если состояние не определено, отправить пользователя в начальное состояние
-            sessionService.setUserState(chatId, UserStateEnum.DEFAULT_UNLOGGED);
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Пожалуйста, используйте /login или /register.");
+            sessionService.setUserState(chatId, UserStateEnum.DEFAULT_LOGGED);
         }
     }
 
@@ -80,10 +98,11 @@ public class MovieBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
-            logger.info("Received message from chatId: {}, text: {}", chatId, messageText);
+            String username = update.getMessage().getFrom().getUserName(); // Никнейм пользователя
 
-            handleTextMessage(chatId, messageText);
+            logger.info("Received message from chatId: {}, text: {}, username: {}", chatId, messageText, username);
 
+            handleTextMessage(chatId, messageText, username);
         } else if (update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
             String chatId = update.getCallbackQuery().getMessage().getChatId().toString();
