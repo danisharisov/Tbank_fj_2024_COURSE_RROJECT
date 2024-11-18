@@ -58,7 +58,7 @@ public class CallbackHandler {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
 
         if (currentUser == null) {
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
+            messageSender.sendMessage(chatId, "Нажмите /start для начала работы.");
             return;
         }
 
