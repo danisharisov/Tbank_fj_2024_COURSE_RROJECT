@@ -1,5 +1,6 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.AddFriendCommand;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.DeleteFriendCommand;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie.*;
@@ -47,10 +48,10 @@ public class CommandHandler {
         this.addFriendCommand = addFriendCommand;
     }
 
-    public void handleStateBasedCommand(String chatId, String messageText, UserStateEnum state) {
+    public void handleStateBasedCommand(String chatId, String messageText, UserStateEnum state, String username) {
         switch (state) {
             case DEFAULT_UNLOGGED:
-                unloggedStateHandler.handleUnloggedState(chatId, messageText);
+                unloggedStateHandler.handleUnloggedState(chatId, messageText, username);
                 break;
             case WAITING_FOR_MOVIE_TITLE:
                 addMovieCommand.execute(chatId, Collections.singletonList(messageText));
@@ -79,5 +80,4 @@ public class CommandHandler {
                 break;
         }
     }
-
 }
