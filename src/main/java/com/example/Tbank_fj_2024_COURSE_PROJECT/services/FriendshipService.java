@@ -88,8 +88,12 @@ public class FriendshipService {
         friendship.setStatus(FriendshipStatus.ACCEPTED);
         friendshipRepository.save(friendship);
 
+        // Синхронизируем фильмы текущего пользователя с запросившим
         synchronizePlannedMovies(currentUser, requesterUser);
+
+        // Синхронизируем фильмы запросившего с текущим
         synchronizePlannedMovies(requesterUser, currentUser);
+
         logger.info("Запрос на дружбу от {} к {} принят", requesterUsername, currentUsername);
     }
 
@@ -146,19 +150,44 @@ public class FriendshipService {
         logger.info("Запрос на добавление в друзья от {} к {} был отменен.", senderUsername, receiverUsername);
     }
 
-    private void synchronizePlannedMovies(AppUser targetUser, AppUser sourceUser) {
-        List<UserMovie> sourcePlannedMovies = userMovieService.getCombinedPlannedMovies(sourceUser);
+    public void synchronizePlannedMovies(AppUser sourceUser, AppUser targetUser) {
+        List<UserMovie> plannedMovies = userMovieService.getPlannedMoviesForUser(sourceUser);
 
-        for (UserMovie sourceMovie : sourcePlannedMovies) {
-            Movie movie = sourceMovie.getMovie();
-            Optional<UserMovie> existingUserMovie = userMovieService.findByUserAndMovieAndStatus(targetUser, movie, MovieStatus.WANT_TO_WATCH_BY_FRIEND);
+        for (UserMovie userMovie : plannedMovies) {
+            Movie movie = userMovie.getMovie();
 
-            existingUserMovie.ifPresentOrElse(
-                    um -> logger.info("Фильм {} уже предложен пользователю {}", movie.getTitle(), targetUser.getUsername()),
-                    () -> userMovieService.addSuggestedMovie(targetUser, movie, sourceUser.getUsername())
-            );
+            Optional<UserMovie> existingMovie = userMovieService.findByUserAndMovie(targetUser, movie);
+
+            if (existingMovie.isPresent()) {
+                UserMovie targetUserMovie = existingMovie.get();
+
+                // Если статус уже WANT_TO_WATCH_BY_FRIEND, предложенный источником, пропускаем
+                if (targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH_BY_FRIEND &&
+                        targetUserMovie.getSuggestedBy().equals(sourceUser.getUsername())) {
+                    continue;
+                }
+
+                // Если статус UNWATCHED, обновляем его на WANT_TO_WATCH_BY_FRIEND
+                if (targetUserMovie.getStatus() == MovieStatus.UNWATCHED) {
+                    targetUserMovie.setStatus(MovieStatus.WANT_TO_WATCH_BY_FRIEND);
+                    targetUserMovie.setSuggestedBy(sourceUser.getUsername());
+                    userMovieService.saveUserMovie(targetUserMovie);
+                    logger.info("Фильм обновлён для пользователя {}: статус UNWATCHED -> WANT_TO_WATCH_BY_FRIEND", targetUser.getUsername());
+                    continue;
+                }
+
+                // Если статус WANT_TO_WATCH, пропускаем
+                if (targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH) {
+                    continue;
+                }
+            }
+
+            // Добавляем фильм как предложенный
+            userMovieService.addSuggestedMovie(targetUser, movie, sourceUser.getUsername());
         }
-
-        logger.info("Синхронизация запланированных фильмов между пользователями {} и {} завершена", targetUser.getUsername(), sourceUser.getUsername());
     }
+
+
+
+
 }

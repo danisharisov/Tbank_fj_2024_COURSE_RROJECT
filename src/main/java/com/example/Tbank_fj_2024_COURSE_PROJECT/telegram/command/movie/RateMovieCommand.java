@@ -1,4 +1,3 @@
-// command/RateMovieCommand.java
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
