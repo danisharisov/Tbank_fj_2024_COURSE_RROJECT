@@ -17,8 +17,6 @@ public class AppUserService {
     @Autowired
     private AppUserRepository appUserRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
 
     @Transactional
@@ -28,21 +26,14 @@ public class AppUserService {
     }
 
 
-
     @Transactional
-    public AppUser registerUser(AppUser newUser, String chatId) {
-        if (appUserRepository.findByUsername(newUser.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Пользователь с таким именем уже существует.");
-        }
-        newUser.setTelegramId(chatId);
-        newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
-        appUserRepository.save(newUser);
-        logger.info("Новый пользователь зарегистрирован: {}", newUser.getUsername());
-        return newUser;
+
+    public AppUser findByTelegramId(String telegramId) {
+        return appUserRepository.findByTelegramId(telegramId).orElse(null);
     }
 
     @Transactional
-    public boolean checkPassword(AppUser user, String password) {
-        return passwordEncoder.matches(password, user.getPassword());
+    public void saveUser(AppUser user) {
+        appUserRepository.save(user);
     }
 }

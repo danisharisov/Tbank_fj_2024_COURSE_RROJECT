@@ -20,9 +20,10 @@ public class AddFriendCommand implements Command {
 
     private final SessionService sessionService;
 
-    private final  FriendshipService friendshipService;
+    private final FriendshipService friendshipService;
 
     private final MessageSender messageSender;
+
     @Autowired
     public AddFriendCommand(SessionService sessionService, FriendshipService friendshipService, MessageSender messageSender) {
         this.sessionService = sessionService;
@@ -45,8 +46,16 @@ public class AddFriendCommand implements Command {
             return;
         }
 
+        // Получаем введённое имя пользователя
         String friendUsername = args.get(0);
+
+        // Удаляем символ '@', если он есть в начале
+        if (friendUsername.startsWith("@")) {
+            friendUsername = friendUsername.substring(1);
+        }
+
         try {
+            // Отправляем запрос на добавление в друзья
             friendshipService.addFriendRequest(currentUser.getUsername(), friendUsername);
             messageSender.sendMessage(chatId, "Запрос на добавление в друзья отправлен пользователю " + friendUsername + ".");
             sessionService.clearUserState(chatId);
