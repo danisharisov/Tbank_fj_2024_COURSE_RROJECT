@@ -159,6 +159,7 @@ public class UserMovieService {
 
     public double getAverageFriendRating(AppUser user, Movie movie) {
         List<AppUser> friends = friendshipService.getFriends(user.getUsername());
+        friends.add(user);
         List<UserMovie> friendRatings = userMovieRepository.findByMovieAndUserIn(movie, friends);
 
         return friendRatings.stream()
