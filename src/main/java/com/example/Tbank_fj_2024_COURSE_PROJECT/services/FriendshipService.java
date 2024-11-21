@@ -162,8 +162,9 @@ public class FriendshipService {
                 UserMovie targetUserMovie = existingMovie.get();
 
                 // Если статус уже WANT_TO_WATCH_BY_FRIEND, предложенный источником, пропускаем
-                if (targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH_BY_FRIEND &&
-                        targetUserMovie.getSuggestedBy().equals(sourceUser.getUsername())) {
+                if (targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH_BY_FRIEND ||
+                        targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH ||
+                        targetUserMovie.getStatus() == MovieStatus.WATCHED) {
                     continue;
                 }
 
@@ -175,19 +176,12 @@ public class FriendshipService {
                     logger.info("Фильм обновлён для пользователя {}: статус UNWATCHED -> WANT_TO_WATCH_BY_FRIEND", targetUser.getUsername());
                     continue;
                 }
-
-                // Если статус WANT_TO_WATCH, пропускаем
-                if (targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH) {
-                    continue;
-                }
             }
 
             // Добавляем фильм как предложенный
             userMovieService.addSuggestedMovie(targetUser, movie, sourceUser.getUsername());
         }
     }
-
-
 
 
 }
