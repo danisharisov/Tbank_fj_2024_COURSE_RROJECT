@@ -46,7 +46,7 @@ public class PickWatchedMovieCommand implements Command {
             return;
         }
 
-            List<UserMovie> watchedMovies = userMovieService.getWatchedMovies(currentUser);
+            List<UserMovie> watchedMovies = userMovieService.getUserMoviesWithDetails(currentUser);
             if (movieIndex < 1 || movieIndex > watchedMovies.size()) {
                 messageSender.sendMessage(chatId, "Некорректный номер. Попробуйте снова.");
             } else {

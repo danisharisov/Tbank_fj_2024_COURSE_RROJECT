@@ -35,9 +35,9 @@ public class FriendshipService {
         this.userMovieService = userMovieService;
     }
 
+    // Отправить запрос на добавление в друзья
     public void addFriendRequest(String currentUsername, String friendUsername) {
         validateNotSelf(currentUsername, friendUsername);
-
         AppUser currentUser = appUserService.findByUsername(currentUsername);
         AppUser friendUser = appUserService.findByUsername(friendUsername);
 
@@ -49,16 +49,7 @@ public class FriendshipService {
         logger.info("Запрос на дружбу отправлен от {} к {}", currentUsername, friendUsername);
     }
 
-    private void validateNotSelf(String currentUsername, String friendUsername) {
-        if (currentUsername.equals(friendUsername)) {
-            throw new IllegalArgumentException("Нельзя добавить самого себя в друзья.");
-        }
-    }
-
-    private boolean friendshipExists(AppUser user, AppUser friend) {
-        return friendshipRepository.findByUserAndFriend(user, friend).isPresent();
-    }
-
+    // Создать запись дружбы с указанным статусом
     private Friendship createFriendship(AppUser user, AppUser friend, FriendshipStatus status) {
         Friendship friendship = new Friendship();
         friendship.setUser(user);
@@ -67,6 +58,7 @@ public class FriendshipService {
         return friendship;
     }
 
+    // Отклонить запрос на добавление в друзья
     public void rejectFriendRequest(String currentUsername, String requesterUsername) {
         AppUser currentUser = appUserService.findByUsername(currentUsername);
         AppUser requesterUser = appUserService.findByUsername(requesterUsername);
@@ -78,6 +70,7 @@ public class FriendshipService {
         logger.info("Запрос на дружбу от {} к {} отклонен", requesterUsername, currentUsername);
     }
 
+    // Принять запрос на добавление в друзья
     public void acceptFriendRequest(String currentUsername, String requesterUsername) {
         AppUser currentUser = appUserService.findByUsername(currentUsername);
         AppUser requesterUser = appUserService.findByUsername(requesterUsername);
@@ -88,25 +81,23 @@ public class FriendshipService {
         friendship.setStatus(FriendshipStatus.ACCEPTED);
         friendshipRepository.save(friendship);
 
-        // Синхронизируем фильмы текущего пользователя с запросившим
         synchronizePlannedMovies(currentUser, requesterUser);
-
-        // Синхронизируем фильмы запросившего с текущим
         synchronizePlannedMovies(requesterUser, currentUser);
 
         logger.info("Запрос на дружбу от {} к {} принят", requesterUsername, currentUsername);
     }
 
+    // Получить список друзей пользователя
     @Transactional
     public List<AppUser> getFriends(String username) {
         AppUser user = appUserService.findByUsername(username);
-
         return friendshipRepository.findAllByUserOrFriendAndStatus(user, FriendshipStatus.ACCEPTED)
                 .stream()
                 .map(friendship -> friendship.getUser().equals(user) ? friendship.getFriend() : friendship.getUser())
                 .collect(Collectors.toList());
     }
 
+    // Получить входящие запросы в друзья
     public List<AppUser> getIncomingRequests(String username) {
         AppUser user = appUserService.findByUsername(username);
         return friendshipRepository.findAllByFriendAndStatus(user, FriendshipStatus.PENDING)
@@ -115,6 +106,7 @@ public class FriendshipService {
                 .collect(Collectors.toList());
     }
 
+    // Получить исходящие запросы в друзья
     public List<AppUser> getOutgoingRequests(String username) {
         AppUser user = appUserService.findByUsername(username);
         return friendshipRepository.findAllByUserAndStatus(user, FriendshipStatus.PENDING)
@@ -123,6 +115,7 @@ public class FriendshipService {
                 .collect(Collectors.toList());
     }
 
+    // Удалить дружбу между двумя пользователями
     public void removeFriendship(String currentUsername, String friendUsername) {
         AppUser currentUser = appUserService.findByUsername(currentUsername);
         AppUser friendUser = appUserService.findByUsername(friendUsername);
@@ -135,11 +128,13 @@ public class FriendshipService {
         logger.info("Дружба между {} и {} успешно удалена", currentUsername, friendUsername);
     }
 
+    // Удалить запись дружбы из базы данных
     private void deleteFriendship(AppUser user, AppUser friend) {
         friendshipRepository.findByUserAndFriend(user, friend)
                 .ifPresent(friendshipRepository::delete);
     }
 
+    // Отменить отправленный запрос на добавление в друзья
     public void cancelFriendRequest(String senderUsername, String receiverUsername) {
         AppUser sender = appUserService.findByUsername(senderUsername);
         AppUser receiver = appUserService.findByUsername(receiverUsername);
@@ -150,6 +145,7 @@ public class FriendshipService {
         logger.info("Запрос на добавление в друзья от {} к {} был отменен.", senderUsername, receiverUsername);
     }
 
+    // Синхронизировать запланированные фильмы между двумя пользователями
     public void synchronizePlannedMovies(AppUser sourceUser, AppUser targetUser) {
         List<UserMovie> plannedMovies = userMovieService.getPlannedMoviesForUser(sourceUser);
 
@@ -160,15 +156,12 @@ public class FriendshipService {
 
             if (existingMovie.isPresent()) {
                 UserMovie targetUserMovie = existingMovie.get();
-
-                // Если статус уже WANT_TO_WATCH_BY_FRIEND, предложенный источником, пропускаем
                 if (targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH_BY_FRIEND ||
                         targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH ||
                         targetUserMovie.getStatus() == MovieStatus.WATCHED) {
                     continue;
                 }
 
-                // Если статус UNWATCHED, обновляем его на WANT_TO_WATCH_BY_FRIEND
                 if (targetUserMovie.getStatus() == MovieStatus.UNWATCHED) {
                     targetUserMovie.setStatus(MovieStatus.WANT_TO_WATCH_BY_FRIEND);
                     targetUserMovie.setSuggestedBy(sourceUser.getUsername());
@@ -177,11 +170,20 @@ public class FriendshipService {
                     continue;
                 }
             }
-
-            // Добавляем фильм как предложенный
             userMovieService.addSuggestedMovie(targetUser, movie, sourceUser.getUsername());
         }
     }
 
+    // Проверить, что пользователь не добавляет сам себя в друзья
+    private void validateNotSelf(String currentUsername, String friendUsername) {
+        if (currentUsername.equals(friendUsername)) {
+            throw new IllegalArgumentException("Нельзя добавить самого себя в друзья.");
+        }
+    }
+
+    // Проверить существование дружбы или заявки
+    private boolean friendshipExists(AppUser user, AppUser friend) {
+        return friendshipRepository.findByUserAndFriend(user, friend).isPresent();
+    }
 
 }
