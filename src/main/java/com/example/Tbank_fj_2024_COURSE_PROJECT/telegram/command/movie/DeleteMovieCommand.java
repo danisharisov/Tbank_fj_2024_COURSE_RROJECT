@@ -46,7 +46,7 @@ public class DeleteMovieCommand implements Command {
             return;
         }
 
-        userMovieService.setMovieStatusForUser(currentUser, selectedMovie, MovieStatus.UNWATCHED);
+        userMovieService.setMovieStatusForUserToUnwatched(currentUser, selectedMovie);
         messageSender.sendMessage(chatId, "Фильм успешно удален из просмотренных.");
         sessionService.setSelectedMovie(chatId, null);
         messageSender.sendMainMenu(chatId);
