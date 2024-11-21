@@ -105,7 +105,6 @@ public class CallbackHandler {
 
     public void handleCallbackQuery(String chatId, String callbackData) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
-
         if (currentUser == null) {
             messageSender.sendMessage(chatId, "Нажмите /start для начала работы.");
             return;

@@ -2,7 +2,6 @@ package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
