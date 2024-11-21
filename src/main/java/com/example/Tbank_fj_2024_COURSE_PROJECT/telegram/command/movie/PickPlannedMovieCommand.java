@@ -14,61 +14,61 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+
 @Component
-public class PickPlannedMovieCommand implements Command {
+public class PickPlannedMovieCommand extends Command {
+
     private static final Logger logger = LoggerFactory.getLogger(PickPlannedMovieCommand.class);
-    private final SessionService sessionService;
     private final UserMovieService userMovieService;
-    private final MessageSender messageSender;
 
     @Autowired
-    public PickPlannedMovieCommand(SessionService sessionService, UserMovieService userMovieService,
-                                     MessageSender messageSender) {
-        this.sessionService = sessionService;
+    public PickPlannedMovieCommand(SessionService sessionService, UserMovieService userMovieService, MessageSender messageSender) {
+        super(sessionService, messageSender);
         this.userMovieService = userMovieService;
-        this.messageSender = messageSender;
     }
+
+    // Выбор запланированного фильма по номеру
     @Override
     public void execute(String chatId, List<String> args) {
+        logger.info("Executing PickPlannedMovieCommand for chatId: {}", chatId);
         AppUser currentUser = sessionService.getCurrentUser(chatId);
-        if (currentUser == null) {
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
-            return;
-        }
-        // Проверяем, что аргумент args не пустой и содержит индекс
+
         if (args.isEmpty()) {
+            logger.warn("No arguments provided for chatId: {}", chatId);
             messageSender.sendMessage(chatId, "Укажите номер фильма, который хотите выбрать.");
             return;
         }
-        // Преобразуем аргумент args[0] в movieIndex
+
         int movieIndex;
         try {
             movieIndex = Integer.parseInt(args.get(0));
+            logger.info("Parsed movie index: {} for chatId: {}", movieIndex, chatId);
         } catch (NumberFormatException e) {
+            logger.warn("Invalid movie index format for chatId: {}, args: {}", chatId, args);
             messageSender.sendMessage(chatId, "Некорректный формат номера фильма. Пожалуйста, введите числовое значение.");
             return;
         }
 
-            List<UserMovie> combinedPlannedMovies = userMovieService.getCombinedPlannedMovies(currentUser);
-            if (movieIndex < 1 || movieIndex > combinedPlannedMovies.size()) {
-                messageSender.sendMessage(chatId, "Некорректный номер. Попробуйте снова.");
-            } else {
-                UserMovie selectedUserMovie = combinedPlannedMovies.get(movieIndex - 1);
-                Movie selectedMovie = selectedUserMovie.getMovie();
-                AppUser movieOwner = selectedUserMovie.getUser();
+        List<UserMovie> combinedPlannedMovies = userMovieService.getCombinedPlannedMovies(currentUser);
 
-                // Проверка на владельца
-                boolean isOwnMovie = userMovieService.isMovieOwner(currentUser, selectedMovie);
+        if (movieIndex < 1 || movieIndex > combinedPlannedMovies.size()) {
+            logger.warn("Invalid movie index: {} for chatId: {}. Combined movie size: {}", movieIndex, chatId, combinedPlannedMovies.size());
+            messageSender.sendMessage(chatId, "Некорректный номер. Попробуйте снова.");
+        } else {
+            UserMovie selectedUserMovie = combinedPlannedMovies.get(movieIndex - 1);
+            Movie selectedMovie = selectedUserMovie.getMovie();
+            AppUser movieOwner = selectedUserMovie.getUser();
 
-                logger.info("Selected movie: {}, Owner: {}, Current user: {}", selectedMovie.getTitle(), movieOwner.getUsername(), currentUser.getUsername());
+            boolean isOwnMovie = userMovieService.isMovieOwner(currentUser, selectedMovie);
+            int userHype = (selectedUserMovie.getHype() != null) ? selectedUserMovie.getHype() : 0;
+            double averageFriendHype = userMovieService.getAverageFriendHype(currentUser, selectedMovie);
 
-                int userHype = (selectedUserMovie.getHype() != null) ? selectedUserMovie.getHype() : 0;
-                double averageFriendHype = userMovieService.getAverageFriendHype(currentUser, selectedMovie);
+            logger.info("Selected movie: {}, Owner: {}, Current user: {}, User hype: {}, Avg friend hype: {}",
+                    selectedMovie.getTitle(), movieOwner.getUsername(), currentUser.getUsername(), userHype, averageFriendHype);
 
-                // Передаем параметр isOwnMovie, чтобы кнопка удаления отображалась только для собственных фильмов
-                messageSender.sendPlannedMovieDetailsWithOptions(chatId, currentUser, selectedMovie, userHype, averageFriendHype, isOwnMovie);
-                sessionService.setSelectedMovie(chatId, selectedMovie);
-                sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_SELECTION_USER);
+            messageSender.sendPlannedMovieDetailsWithOptions(chatId, currentUser, selectedMovie, userHype, averageFriendHype, isOwnMovie);
+            sessionService.setSelectedMovie(chatId, selectedMovie);
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_SELECTION_USER);
         }
     }
 }

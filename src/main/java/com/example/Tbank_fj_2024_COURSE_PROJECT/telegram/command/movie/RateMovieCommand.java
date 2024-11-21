@@ -14,29 +14,21 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-public class RateMovieCommand implements Command {
+public class RateMovieCommand extends Command {
 
     private static final Logger logger = LoggerFactory.getLogger(RateMovieCommand.class);
-
-    private final SessionService sessionService;
     private final UserMovieService userMovieService;
-    private final MessageSender messageSender;
 
     @Autowired
-    public RateMovieCommand(SessionService sessionService, UserMovieService userMovieService,
-                            MessageSender messageSender) {
-        this.sessionService = sessionService;
+    public RateMovieCommand(SessionService sessionService, UserMovieService userMovieService, MessageSender messageSender) {
+        super(sessionService,messageSender);
         this.userMovieService = userMovieService;
-        this.messageSender = messageSender;
     }
 
+    // Оценка просмотренного фильма
     @Override
     public void execute(String chatId, List<String> args) {
-        AppUser currentUser = sessionService.getCurrentUser(chatId);
-        if (currentUser == null) {
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
-            return;
-        }
+        AppUser currentUser = getCurrentUser(chatId);
 
         Movie selectedMovie = sessionService.getSelectedMovie(chatId);
         if (selectedMovie == null) {
@@ -45,14 +37,14 @@ public class RateMovieCommand implements Command {
         }
 
         if (args.isEmpty()) {
-            messageSender.sendMessage(chatId, "Введите оценку от 1.0 до 10.0.");
+            messageSender.sendMessage(chatId, "Введите оценку от 0 до 10.0.");
             return;
         }
 
         try {
             double rating = Double.parseDouble(args.get(0));
-            if (rating < 1.0 || rating > 10.0) {
-                messageSender.sendMessage(chatId, "Некорректное значение. Введите оценку от 1.0 до 10.0.");
+            if (rating < 0 || rating > 10.0) {
+                messageSender.sendMessage(chatId, "Некорректное значение. Введите оценку от 0 до 10.");
                 return;
             }
 
@@ -61,7 +53,7 @@ public class RateMovieCommand implements Command {
             messageSender.sendMainMenu(chatId);
 
         } catch (NumberFormatException e) {
-            messageSender.sendMessage(chatId, "Некорректный формат числа. Введите оценку от 1.0 до 10.0.");
+            messageSender.sendMessage(chatId, "Некорректный формат числа. Введите оценку от 0 до 10.");
         }
     }
 }

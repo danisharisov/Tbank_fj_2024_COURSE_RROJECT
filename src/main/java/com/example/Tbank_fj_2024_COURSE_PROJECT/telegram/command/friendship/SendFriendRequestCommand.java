@@ -5,35 +5,36 @@ import com.example.Tbank_fj_2024_COURSE_PROJECT.services.FriendshipService;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
-public class SendFriendRequestCommand implements Command {
+public class SendFriendRequestCommand extends Command {
 
-    private final SessionService sessionService;
+    private static final Logger logger = LoggerFactory.getLogger(SendFriendRequestCommand.class);
+
     private final FriendshipService friendshipService;
-    private final MessageSender messageSender;
 
     @Autowired
     public SendFriendRequestCommand(SessionService sessionService, FriendshipService friendshipService,
                                     MessageSender messageSender) {
-        this.sessionService = sessionService;
+        super(sessionService, messageSender);
         this.friendshipService = friendshipService;
-        this.messageSender = messageSender;
     }
 
+    // Отправить заявку в друзья
     @Override
     public void execute(String chatId, List<String> args) {
-        AppUser currentUser = sessionService.getCurrentUser(chatId);
-        if (currentUser == null) {
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
-            return;
-        }
+        logger.info("Executing SendFriendRequestCommand for chatId: {}", chatId);
+
+        AppUser currentUser = getCurrentUser(chatId);
 
         if (args.isEmpty()) {
+            logger.warn("Friend username not provided for chatId: {}", chatId);
             messageSender.sendMessage(chatId, "Пожалуйста, укажите имя друга для отправки запроса.");
             return;
         }
@@ -41,8 +42,10 @@ public class SendFriendRequestCommand implements Command {
         String friendUsername = args.get(0);
         try {
             friendshipService.addFriendRequest(currentUser.getUsername(), friendUsername);
+            logger.info("Friend request sent from {} to {}", currentUser.getUsername(), friendUsername);
             messageSender.sendMessage(chatId, "Запрос на добавление в друзья отправлен!");
         } catch (IllegalArgumentException e) {
+            logger.error("Error while sending friend request from {} to {}: {}", currentUser.getUsername(), friendUsername, e.getMessage());
             messageSender.sendMessage(chatId, "Ошибка: " + e.getMessage());
         }
     }
