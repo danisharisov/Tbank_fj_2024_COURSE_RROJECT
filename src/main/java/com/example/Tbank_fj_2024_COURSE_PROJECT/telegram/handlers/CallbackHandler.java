@@ -3,15 +3,18 @@ package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.*;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie.*;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 
 @Component
 public class CallbackHandler {
@@ -19,7 +22,7 @@ public class CallbackHandler {
     private static final Logger logger = LoggerFactory.getLogger(CallbackHandler.class);
 
     private final SessionService sessionService;
-    private final  MessageSender messageSender;
+    private final MessageSender messageSender;
     private final DeleteMovieCommand deleteMovieCommand;
     private final DeletePlannedMovieCommand deletePlannedMovieCommand;
     private final SelectMovieCommand selectMovieCommand;
@@ -31,13 +34,16 @@ public class CallbackHandler {
     private final RejectFriendRequestCommand rejectFriendRequestCommand;
     private final CancelFriendRequestCommand cancelFriendRequestCommand;
     private final AcceptFriendRequestCommand acceptFriendRequestCommand;
-@Autowired
-    public CallbackHandler(SessionService sessionService, MessageSender messageSender, DeleteMovieCommand deleteMovieCommand,
-                           DeletePlannedMovieCommand deletePlannedMovieCommand, SelectMovieCommand selectMovieCommand,
-                           ViewWatchedMoviesCommand viewWatchedMoviesCommand, ViewPlannedMoviesCommand viewPlannedMoviesCommand,
-                           FriendsMenuCommand friendsMenuCommand, IncomingRequestsCommand incomingRequestsCommand,
-                           OutgoingRequestsCommand outgoingRequestsCommand, RejectFriendRequestCommand rejectFriendRequestCommand,
-                           CancelFriendRequestCommand cancelFriendRequestCommand, AcceptFriendRequestCommand acceptFriendRequestCommand) {
+
+    private final Map<String, Consumer<String>> callbackActions = new HashMap<>();
+
+    public CallbackHandler(SessionService sessionService, MessageSender messageSender,
+                           DeleteMovieCommand deleteMovieCommand, DeletePlannedMovieCommand deletePlannedMovieCommand,
+                           SelectMovieCommand selectMovieCommand, ViewWatchedMoviesCommand viewWatchedMoviesCommand,
+                           ViewPlannedMoviesCommand viewPlannedMoviesCommand, FriendsMenuCommand friendsMenuCommand,
+                           IncomingRequestsCommand incomingRequestsCommand, OutgoingRequestsCommand outgoingRequestsCommand,
+                           RejectFriendRequestCommand rejectFriendRequestCommand, CancelFriendRequestCommand cancelFriendRequestCommand,
+                           AcceptFriendRequestCommand acceptFriendRequestCommand) {
         this.sessionService = sessionService;
         this.messageSender = messageSender;
         this.deleteMovieCommand = deleteMovieCommand;
@@ -53,6 +59,49 @@ public class CallbackHandler {
         this.acceptFriendRequestCommand = acceptFriendRequestCommand;
     }
 
+    @PostConstruct
+    public void init() {
+        callbackActions.put("main_menu", chatId -> messageSender.sendMainMenu(chatId));
+        callbackActions.put("add_movie", chatId -> {
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_MOVIE_STATUS_SELECTION);
+            messageSender.processAddMovieStatusSelection(chatId);
+        });
+        callbackActions.put("selected_planned", chatId -> {
+            sessionService.setMovieIsPlanned(chatId, true);
+            messageSender.sendMessage(chatId, "Введите название фильма для добавления в запланированные:");
+        });
+        callbackActions.put("selected_watched", chatId -> {
+            sessionService.setMovieIsPlanned(chatId, false);
+            messageSender.sendMessage(chatId, "Введите название фильма для добавления в просмотренные:");
+        });
+        callbackActions.put("select_movie", chatId -> selectMovieCommand.execute(chatId, List.of(sessionService.getContext(chatId))));
+        callbackActions.put("rate_movie", chatId -> {
+            messageSender.sendMessage(chatId, "Введите оценку от 0 до 10");
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_RATING);
+        });
+        callbackActions.put("delete_movie", chatId -> deleteMovieCommand.execute(chatId, null));
+        callbackActions.put("delete_planned", chatId -> deletePlannedMovieCommand.execute(chatId, null));
+        callbackActions.put("view_watched_movies", chatId -> viewWatchedMoviesCommand.execute(chatId, null));
+        callbackActions.put("view_planned_movies", chatId -> viewPlannedMoviesCommand.execute(chatId, null));
+        callbackActions.put("add_hype", chatId -> {
+            messageSender.sendMessage(chatId, "Введите уровень ажиотажа от 0 до 3 для выбранного фильма:");
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_HYPE);
+        });
+        callbackActions.put("friends_menu", chatId -> friendsMenuCommand.execute(chatId, null));
+        callbackActions.put("delete_friend", chatId -> {
+            messageSender.sendMessage(chatId, "Введите имя друга для удаления.");
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_FRIEND_DELETION);
+        });
+        callbackActions.put("send_friend_request", chatId -> {
+            messageSender.sendMessage(chatId, "Введите имя пользователя для добавления в друзья.");
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_FRIEND_USERNAME);
+        });
+        callbackActions.put("incoming_requests", chatId -> incomingRequestsCommand.execute(chatId, null));
+        callbackActions.put("outgoing_requests", chatId -> outgoingRequestsCommand.execute(chatId, null));
+        callbackActions.put("accept_request", chatId -> acceptFriendRequestCommand.execute(chatId, null));
+        callbackActions.put("reject_request", chatId -> rejectFriendRequestCommand.execute(chatId, null));
+        callbackActions.put("cancel_request", chatId -> cancelFriendRequestCommand.execute(chatId, null));
+    }
 
     public void handleCallbackQuery(String chatId, String callbackData) {
         AppUser currentUser = sessionService.getCurrentUser(chatId);
@@ -64,74 +113,12 @@ public class CallbackHandler {
 
         logger.info("Handling callback query for chatId: {}, callbackData: {}", chatId, callbackData);
 
-        switch (callbackData) {
-            case "main_menu":
-                messageSender.sendMainMenu(chatId);
-                break;
-            case "add_movie":
-                sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_MOVIE_STATUS_SELECTION);
-                messageSender.processAddMovieStatusSelection(chatId);
-                break;
-            case "selected_planned":
-                sessionService.setMovieIsPlanned(chatId, true);
-                messageSender.sendMessage(chatId, "Введите название фильма для добавления в запланированные:");
-                break;
-            case "selected_watched":
-                sessionService.setMovieIsPlanned(chatId, false);
-                messageSender.sendMessage(chatId, "Введите название фильма для добавления в просмотренные:");
-                break;
-            case "select_movie":
-                selectMovieCommand.execute(chatId, List.of(sessionService.getContext(chatId)));
-                break;
-            case "rate_movie":
-                messageSender.sendMessage(chatId, "Введите оценку от 1.0 до 10.0.");
-                sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_RATING);
-                break;
-            case "delete_movie":
-                deleteMovieCommand.execute(chatId, null);
-                break;
-            case "delete_planned":
-                deletePlannedMovieCommand.execute(chatId,null);
-                break;
-            case "view_watched_movies":
-                viewWatchedMoviesCommand.execute(chatId,null);
-                break;
-            case "view_planned_movies":
-                viewPlannedMoviesCommand.execute(chatId,null);
-                break;
-            case "add_hype":
-                messageSender.sendMessage(chatId, "Введите уровень ажиотажа от 1 до 3 для выбранного фильма:");
-                sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_HYPE);
-                break;
-            case "friends_menu":
-                friendsMenuCommand.execute(chatId, null);
-                break;
-            case "delete_friend":
-                messageSender.sendMessage(chatId, "Введите имя друга для удаления.");
-                sessionService.setUserState(chatId, UserStateEnum.WAITING_FRIEND_DELETION);
-                break;
-            case "send_friend_request":
-                messageSender.sendMessage(chatId, "Введите имя пользователя для добавления в друзья.");
-                sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_FRIEND_USERNAME);
-                break;
-            case "incoming_requests":
-                incomingRequestsCommand.execute(chatId, null);
-                break;
-            case "outgoing_requests":
-                outgoingRequestsCommand.execute(chatId, null);
-                break;
-            case "accept_request":
-                acceptFriendRequestCommand.execute(chatId,null);
-                break;
-            case "reject_request":
-                rejectFriendRequestCommand.execute(chatId,null);
-                break;
-            case "cancel_request":
-                cancelFriendRequestCommand.execute(chatId,null);
-                break;
-            default:
-                messageSender.sendMessage(chatId, "Неизвестная команда.");
-                break;
+        Consumer<String> action = callbackActions.get(callbackData);
+        if (action != null) {
+            action.accept(chatId);
+        } else {
+            messageSender.sendMessage(chatId, "Неизвестная команда.");
+            logger.warn("Unknown callback data received: {}", callbackData);
         }
     }
 }
