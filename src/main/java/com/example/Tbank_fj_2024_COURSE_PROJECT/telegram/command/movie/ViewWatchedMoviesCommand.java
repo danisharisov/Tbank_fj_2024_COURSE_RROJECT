@@ -35,7 +35,7 @@ public class ViewWatchedMoviesCommand implements Command {
             return;
         }
 
-        List<Movie> watchedMovies = userMovieService.getWatchedMoviesByUser(currentUser.getId());
+        List<Movie> watchedMovies = userMovieService.getWatchedMoviesByUserId(currentUser.getId());
         if (watchedMovies.isEmpty()) {
             messageSender.sendMessage(chatId, "У вас нет просмотренных фильмов.");
             messageSender.sendMainMenu(chatId);
