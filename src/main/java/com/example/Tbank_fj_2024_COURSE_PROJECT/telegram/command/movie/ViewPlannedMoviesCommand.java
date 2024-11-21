@@ -37,39 +37,12 @@ public class ViewPlannedMoviesCommand extends Command {
         logger.info("Executing ViewPlannedMoviesCommand for user: {}, chatId: {}", currentUser.getUsername(), chatId);
 
         List<UserMovie> combinedPlannedMovies = userMovieService.getCombinedPlannedMovies(currentUser);
-        if (combinedPlannedMovies.isEmpty()) {
-            logger.info("No planned movies found for user: {}, chatId: {}", currentUser.getUsername(), chatId);
-            messageSender.sendMessage(chatId, "У вас нет запланированных фильмов.");
-            messageSender.sendMainMenu(chatId);
-            return;
+
+        messageSender.sendPlannedMovies(chatId, combinedPlannedMovies, currentUser);
+
+        if (!combinedPlannedMovies.isEmpty()) {
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_PLANNED_MOVIE_NUMBER);
+            sessionService.setMovieIsPlanned(chatId, true);
         }
-
-        Set<String> addedMovieIds = new HashSet<>();
-        StringBuilder response = new StringBuilder("Запланированные фильмы (ваши и предложенные друзьями):\n");
-
-        int index = 1;
-        for (UserMovie userMovie : combinedPlannedMovies) {
-            Movie movie = userMovie.getMovie();
-            String suggestedBy = userMovie.getSuggestedBy();
-
-            if (addedMovieIds.add(movie.getImdbId())) {
-                response.append(index++).append(". ").append(movie.getTitle())
-                        .append(" (").append(movie.getYear()).append(")");
-
-                if (userMovie.getStatus() == MovieStatus.WANT_TO_WATCH) {
-                    response.append(" — запланировано вами\n");
-                } else if (userMovie.getStatus() == MovieStatus.WANT_TO_WATCH_BY_FRIEND) {
-                    response.append(" — предложено другом ").append(suggestedBy != null ? suggestedBy : "неизвестным пользователем").append("\n");
-                }
-
-                logger.debug("Added movie to response: {}, suggestedBy: {}, user: {}, chatId: {}",
-                        movie.getTitle(), suggestedBy, currentUser.getUsername(), chatId);
-            }
-        }
-
-        logger.info("Prepared response with planned movies for user: {}, chatId: {}", currentUser.getUsername(), chatId);
-        messageSender.sendMessage(chatId, response.toString());
-        sessionService.setUserState(chatId, UserStateEnum.WAITING_PLANNED_MOVIE_NUMBER);
-        sessionService.setMovieIsPlanned(chatId, true);
     }
 }
