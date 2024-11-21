@@ -56,11 +56,19 @@ public class UserMovieService {
         userMovieRepository.save(userMovie);
     }
 
-    // Устанавливает статус фильма для пользователя, используется для удаления
-    public void setMovieStatusForUser(AppUser user, Movie movie, MovieStatus newStatus) {
+    // Устанавливает статус фильма для пользователя на UNWATCHED, используется для удаления
+    public void setMovieStatusForUserToUnwatched(AppUser user, Movie movie) {
         Optional<UserMovie> userMovieOpt = userMovieRepository.findByUserAndMovie(user, movie);
+        List<AppUser> friends = friendshipService.getFriends(user.getUsername());
         if (userMovieOpt.isPresent()) {
-            updateMovieStatus(userMovieOpt.get(), newStatus);
+            updateMovieStatus(userMovieOpt.get(), MovieStatus.UNWATCHED);
+            friends.forEach(friend -> {
+                Optional<UserMovie> friendMovieOpt = userMovieRepository.findByUserAndMovieAndStatus(friend, movie,
+                        MovieStatus.WANT_TO_WATCH);
+                if (friendMovieOpt.isPresent()) {
+                    addSuggestedMovie(user, movie, friend.getUsername());
+                }
+            });
         } else {
             throw new IllegalArgumentException("Фильм не найден у пользователя.");
         }
@@ -273,6 +281,7 @@ public class UserMovieService {
                 }
             }
         });
+
         friends.forEach(friend -> {
             Optional<UserMovie> friendMovieOpt = userMovieRepository.findByUserAndMovieAndStatus(friend, movie, MovieStatus.WANT_TO_WATCH);
             if (friendMovieOpt.isPresent()) {

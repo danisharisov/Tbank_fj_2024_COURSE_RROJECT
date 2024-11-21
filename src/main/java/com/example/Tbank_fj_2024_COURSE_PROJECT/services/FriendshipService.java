@@ -81,7 +81,6 @@ public class FriendshipService {
         friendship.setStatus(FriendshipStatus.ACCEPTED);
         friendshipRepository.save(friendship);
 
-        // Синхронизировать запланированные фильмы между пользователями
         synchronizePlannedMovies(currentUser, requesterUser);
         synchronizePlannedMovies(requesterUser, currentUser);
 
@@ -124,7 +123,6 @@ public class FriendshipService {
         deleteFriendship(currentUser, friendUser);
         deleteFriendship(friendUser, currentUser);
 
-        // Обновить статус предложенных фильмов у обоих пользователей
         userMovieService.updateSuggestedMoviesStatus(currentUser, friendUser, MovieStatus.UNWATCHED);
         userMovieService.updateSuggestedMoviesStatus(friendUser, currentUser, MovieStatus.UNWATCHED);
         logger.info("Дружба между {} и {} успешно удалена", currentUsername, friendUsername);
@@ -158,15 +156,12 @@ public class FriendshipService {
 
             if (existingMovie.isPresent()) {
                 UserMovie targetUserMovie = existingMovie.get();
-
-                // Если статус уже WANT_TO_WATCH_BY_FRIEND, пропускаем
                 if (targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH_BY_FRIEND ||
                         targetUserMovie.getStatus() == MovieStatus.WANT_TO_WATCH ||
                         targetUserMovie.getStatus() == MovieStatus.WATCHED) {
                     continue;
                 }
 
-                // Если статус UNWATCHED, обновляем его на WANT_TO_WATCH_BY_FRIEND
                 if (targetUserMovie.getStatus() == MovieStatus.UNWATCHED) {
                     targetUserMovie.setStatus(MovieStatus.WANT_TO_WATCH_BY_FRIEND);
                     targetUserMovie.setSuggestedBy(sourceUser.getUsername());
@@ -175,8 +170,6 @@ public class FriendshipService {
                     continue;
                 }
             }
-
-            // Добавляем фильм как предложенный
             userMovieService.addSuggestedMovie(targetUser, movie, sourceUser.getUsername());
         }
     }
@@ -192,7 +185,5 @@ public class FriendshipService {
     private boolean friendshipExists(AppUser user, AppUser friend) {
         return friendshipRepository.findByUserAndFriend(user, friend).isPresent();
     }
-
-
 
 }
