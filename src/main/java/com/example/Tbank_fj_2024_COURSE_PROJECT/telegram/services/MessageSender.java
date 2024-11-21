@@ -212,7 +212,7 @@ public class MessageSender  {
         );
 
         // Если есть постер, отправляем его вместе с текстом и кнопками
-        if (movie.getPoster() != null && !movie.getPoster().isEmpty()) {
+        if (movie.getPoster() != null && !movie.getPoster().isEmpty() && !movie.getPoster().equals("N/A")) {
             movieBot.sendPhotoWithInlineKeyboard(chatId, movie.getPoster(), messageText, buttons);
         } else {
             // Если постера нет, просто отправляем текст с кнопками
