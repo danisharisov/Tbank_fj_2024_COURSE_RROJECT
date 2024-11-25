@@ -15,7 +15,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = "movies")
 public class AppUser {
 
     @Id
