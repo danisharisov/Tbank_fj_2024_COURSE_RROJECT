@@ -1,4 +1,4 @@
-package com.example.Tbank_fj_2024_COURSE_PROJECT.services;
+package com.example.Tbank_fj_2024_COURSE_PROJECT.rabbitmq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
