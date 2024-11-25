@@ -84,7 +84,6 @@ public class MovieBot extends TelegramWebhookBot {
     }
 
     @Override
-    @RabbitListener(queues = "telegram_updates_queue")
     public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
