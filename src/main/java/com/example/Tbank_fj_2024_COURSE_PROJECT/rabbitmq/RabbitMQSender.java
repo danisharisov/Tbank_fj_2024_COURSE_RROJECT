@@ -1,4 +1,4 @@
-package com.example.Tbank_fj_2024_COURSE_PROJECT.services;
+package com.example.Tbank_fj_2024_COURSE_PROJECT.rabbitmq;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;

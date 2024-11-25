@@ -1,7 +1,7 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.services.RabbitMQSender;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.rabbitmq.RabbitMQSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CallbackHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CommandHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.UnloggedStateHandler;
@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
