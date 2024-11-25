@@ -1,7 +1,6 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.controllers;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.services.RabbitMQSender;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.rabbitmq.RabbitMQSender;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
