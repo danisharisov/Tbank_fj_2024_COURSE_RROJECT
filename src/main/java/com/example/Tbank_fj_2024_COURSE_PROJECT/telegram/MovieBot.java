@@ -9,12 +9,20 @@ import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.util.List;
 
 @Component
 public class MovieBot extends TelegramWebhookBot {
@@ -99,6 +107,22 @@ public class MovieBot extends TelegramWebhookBot {
             logger.warn("Received unsupported update type: {}", update);
         }
         return null;
+    }
+
+    public void sendPhotoWithInlineKeyboard(String chatId, String photoUrl, String caption, List<List<InlineKeyboardButton>> buttons) {
+        SendPhoto sendPhoto = new SendPhoto();
+        sendPhoto.setChatId(chatId);
+        sendPhoto.setPhoto(new InputFile(photoUrl));
+        sendPhoto.setCaption(caption);
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        inlineKeyboardMarkup.setKeyboard(buttons);
+        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
+        try {
+            execute(sendPhoto);
+            logger.info("Photo with caption sent to chatId: {}", chatId);
+        } catch (TelegramApiException e) {
+            logger.error("Ошибка при отправке фото: {}", e.getMessage());
+        }
     }
 
     @Override

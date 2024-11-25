@@ -1,6 +1,6 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.controllers;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.MovieBot;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.rabbitmq.RabbitMQSender;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,12 +13,11 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 @RestController
 public class WebhookController {
 
-    private final MovieBot movieBot;
     private final String secretToken;
+    private final RabbitMQSender rabbitMQSender;
 
-    public WebhookController(MovieBot movieBot,
-                             @Value("${telegram.bot.secret.token}") String secretToken) {
-        this.movieBot = movieBot;
+    public WebhookController(RabbitMQSender rabbitMQSender, @Value("${telegram.bot.secret.token}") String secretToken) {
+        this.rabbitMQSender = rabbitMQSender;
         this.secretToken = secretToken;
     }
 
@@ -26,13 +25,12 @@ public class WebhookController {
     public ResponseEntity<?> onUpdateReceived(
             @RequestHeader("X-Telegram-Bot-Api-Secret-Token") String receivedToken,
             @RequestBody Update update) {
-        {
-            if (!receivedToken.equals(secretToken)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid Secret Token");
-            }
-            movieBot.onWebhookUpdateReceived(update);
-            return ResponseEntity.ok("Webhook received");
+
+        if (!receivedToken.equals(secretToken)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid Secret Token");
         }
+
+        rabbitMQSender.send("telegram_updates_queue", update);
+        return ResponseEntity.ok("Webhook received and sent to RabbitMQ");
     }
 }
-

@@ -1,7 +1,11 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.MovieStatus;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.UserMovie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.MovieBot;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,24 +15,23 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.bots.TelegramWebhookBot;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 @Component
-public class MessageSender {
+public class MessageSender  {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageSender.class);
 
-    private final TelegramWebhookBot bot;
+    private final MovieBot movieBot;
     private final SessionService sessionService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public MessageSender(@Lazy TelegramWebhookBot bot, SessionService sessionService) {
-        this.bot = bot;
+    public MessageSender(@Lazy MovieBot bot, SessionService sessionService, ObjectMapper objectMapper) {
+        this.movieBot = bot;
         this.sessionService = sessionService;
+        this.objectMapper = objectMapper;
     }
 
     // Основное меню
@@ -36,28 +39,20 @@ public class MessageSender {
         sessionService.clearUserState(chatId);
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Выберите действие из меню ниже:");
+        message.setText("📋 Выберите действие из меню ниже:");
 
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
 
         // Кнопки основного меню
-        rowsInline.add(createButtonRow("Добавить фильм", "add_movie"));
-        rowsInline.add(createButtonRow("Просмотренные фильмы", "view_watched_movies"));
-        rowsInline.add(createButtonRow("Запланированные фильмы", "view_planned_movies"));
-        rowsInline.add(createButtonRow("Друзья", "friends_menu"));
+        rowsInline.add(createButtonRow("➕ Добавить фильм", "add_movie"));
+        rowsInline.add(createButtonRow("✔️ Просмотренные фильмы", "view_watched_movies"));
+        rowsInline.add(createButtonRow("📋 Запланированные фильмы", "view_planned_movies"));
+        rowsInline.add(createButtonRow("👥 Друзья", "friends_menu"));
 
         markupInline.setKeyboard(rowsInline);
         message.setReplyMarkup(markupInline);
 
-        sendMessage(message);
-    }
-
-    // Отправка сообщения без inline-кнопок
-    public void sendMessage(String chatId, String text) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText(text);
         sendMessage(message);
     }
 
@@ -71,16 +66,88 @@ public class MessageSender {
             Movie movie = watchedMovies.get(i);
             sb.append(i + 1).append(". ").append(movie.getTitle()).append(" (").append(movie.getYear()).append(")\n");
         }
+        sb.append("\nЧтобы выбрать фильм, введите его номер.");
+
         message.setText(sb.toString());
 
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
+        buttons.add(
+                List.of(
+                        InlineKeyboardButton.builder()
+                                .text("🏠 Главное меню")
+                                .callbackData("main_menu")
+                                .build()
+                )
+        );
+        inlineKeyboardMarkup.setKeyboard(buttons);
+        message.setReplyMarkup(inlineKeyboardMarkup);
 
         try {
-            bot.execute(message);
+            movieBot.execute(message);
             logger.info("Watched movies message sent to chatId: {}", chatId);
         } catch (TelegramApiException e) {
             logger.error("Error sending watched movies to chatId: {}", chatId, e);
         }
     }
+
+    public void sendPlannedMovies(String chatId, List<UserMovie> combinedPlannedMovies, AppUser currentUser) {
+        if (combinedPlannedMovies.isEmpty()) {
+            sendMessage(chatId, "У вас нет запланированных фильмов.");
+            sendMainMenu(chatId);
+            return;
+        }
+
+        Set<String> addedMovieIds = new HashSet<>();
+        StringBuilder response = new StringBuilder("Запланированные фильмы (ваши и предложенные друзьями):\n");
+
+        int index = 1;
+        for (UserMovie userMovie : combinedPlannedMovies) {
+            Movie movie = userMovie.getMovie();
+            String suggestedBy = userMovie.getSuggestedBy();
+
+            if (addedMovieIds.add(movie.getImdbId())) {
+                response.append(index++).append(". ").append(movie.getTitle())
+                        .append(" (").append(movie.getYear()).append(")");
+
+                if (userMovie.getStatus() == MovieStatus.WANT_TO_WATCH) {
+                    response.append(" — запланировано вами\n");
+                } else if (userMovie.getStatus() == MovieStatus.WANT_TO_WATCH_BY_FRIEND) {
+                    response.append(" — предложено другом ")
+                            .append(suggestedBy != null ? suggestedBy : "неизвестным пользователем").append("\n");
+                }
+            }
+        }
+
+        response.append("\nЧтобы выбрать фильм, введите его номер.");
+
+        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+
+        // Добавляем кнопку "Главное меню"
+        rowsInline.add(
+                List.of(
+                        InlineKeyboardButton.builder()
+                                .text("🏠 Главное меню")
+                                .callbackData("main_menu")
+                                .build()
+                )
+        );
+        markupInline.setKeyboard(rowsInline);
+
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(response.toString());
+        message.setReplyMarkup(markupInline);
+
+        try {
+            movieBot.execute(message);
+            logger.info("Planned movies message sent to chatId: {}", chatId);
+        } catch (TelegramApiException e) {
+            logger.error("Error sending planned movies to chatId: {}", chatId, e);
+        }
+    }
+
 
     // Простое отображение списка фильмов для добавления
     public void sendSimpleMovieList(String chatId, List<Movie> movies) {
@@ -104,9 +171,10 @@ public class MessageSender {
         sendMessage(message);
     }
 
-    // Детали о фильме с оценками и кнопками действий
+    // Детали о просмотренном фильме с оценками и кнопками действий
     public void sendMovieDetails(String chatId, Movie movie, Double userRating, double averageFriendRating) {
 
+        // Формируем текст сообщения
         String messageText = String.format(
                 "Название: %s\nГод: %s\nМоя оценка: %s\nСредняя оценка среди друзей: %.2f\nОценка IMDb: %s",
                 movie.getTitle(),
@@ -116,20 +184,49 @@ public class MessageSender {
                 movie.getImdbRating()
         );
 
-        List<List<InlineKeyboardButton>> buttons = Arrays.asList(
-                Arrays.asList(
-                        createButton("Удалить фильм", "delete_movie"),
-                        createButton("Добавить оценку", "rate_movie"),
-                        createButton("Главное меню", "main_menu")
+        // Формируем кнопки
+        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
+
+        // Первый ряд кнопок
+        buttons.add(
+                List.of(
+                        InlineKeyboardButton.builder()
+                                .text("❌ Удалить")
+                                .callbackData("delete_movie")
+                                .build(),
+                        InlineKeyboardButton.builder()
+                                .text("⭐ Оценка")
+                                .callbackData("rate_movie")
+                                .build()
                 )
         );
 
-        sendMessageWithInlineKeyboard(chatId, messageText, buttons);
-        sessionService.setSelectedMovie(chatId,movie);
+        // Второй ряд кнопок
+        buttons.add(
+                List.of(
+                        InlineKeyboardButton.builder()
+                                .text("🏠 Главное меню")
+                                .callbackData("main_menu")
+                                .build()
+                )
+        );
+
+        // Если есть постер, отправляем его вместе с текстом и кнопками
+        if (movie.getPoster() != null && !movie.getPoster().isEmpty() && !movie.getPoster().equals("N/A")) {
+            movieBot.sendPhotoWithInlineKeyboard(chatId, movie.getPoster(), messageText, buttons);
+        } else {
+            // Если постера нет, просто отправляем текст с кнопками
+            sendMessageWithInlineKeyboard(chatId, messageText, buttons);
+        }
+
+        // Сохраняем выбранный фильм в сессии
+        sessionService.setSelectedMovie(chatId, movie);
     }
 
-    // Детали о запланированном фильме с гипом и кнопками
+
+    // Детали о запланированном фильме с оценками и кнопками действий
     public void sendPlannedMovieDetailsWithOptions(String chatId, AppUser user, Movie movie, int userHype, double averageFriendHype, boolean isOwnMovie) {
+        // Формируем текст сообщения
         String message = String.format(
                 "Название: %s\nГод: %s\nМой ажиотаж: %d\nАжиотаж среди друзей: %.2f\nОценка IMDb: %s",
                 movie.getTitle(),
@@ -139,33 +236,54 @@ public class MessageSender {
                 movie.getImdbRating()
         );
 
+        // Формируем кнопки
         List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
-        List<InlineKeyboardButton> actionButtons = new ArrayList<>();
 
+        // Первый ряд кнопок
         if (isOwnMovie) {
-            actionButtons.add(
-                    InlineKeyboardButton.builder()
-                            .text("Удалить фильм")
-                            .callbackData("delete_planned")
-                            .build()
+            buttons.add(
+                    List.of(
+                            InlineKeyboardButton.builder()
+                                    .text("❌ Удалить")
+                                    .callbackData("delete_planned")
+                                    .build(),
+                            InlineKeyboardButton.builder()
+                                    .text("🔥 Ажиотаж")
+                                    .callbackData("add_hype")
+                                    .build()
+                    )
+            );
+        } else {
+            buttons.add(
+                    List.of(
+                            InlineKeyboardButton.builder()
+                                    .text("🔥 Ажиотаж")
+                                    .callbackData("add_hype")
+                                    .build()
+                    )
             );
         }
-        actionButtons.add(
-                InlineKeyboardButton.builder()
-                        .text("Добавить ажиотаж")
-                        .callbackData("add_hype")
-                        .build()
-        );
-        actionButtons.add(
-                InlineKeyboardButton.builder()
-                        .text("Главное меню")
-                        .callbackData("main_menu")
-                        .build()
-        );
-        buttons.add(actionButtons);
 
-        sendMessageWithInlineKeyboard(chatId, message, buttons);
-        sessionService.setSelectedMovie(chatId,movie);
+        // Второй ряд кнопок
+        buttons.add(
+                List.of(
+                        InlineKeyboardButton.builder()
+                                .text("🏠 Главное меню")
+                                .callbackData("main_menu")
+                                .build()
+                )
+        );
+
+        // Если есть постер, отправляем его вместе с текстом и кнопками
+        if (movie.getPoster() != null && !movie.getPoster().isEmpty() && !movie.getPoster().equals("N/A")) {
+            movieBot.sendPhotoWithInlineKeyboard(chatId, movie.getPoster(), message, buttons);
+        } else {
+            // Если постера нет, просто отправляем текст с кнопками
+            sendMessageWithInlineKeyboard(chatId, message, buttons);
+        }
+
+        // Сохраняем выбранный фильм в сессии
+        sessionService.setSelectedMovie(chatId, movie);
     }
 
     // Отправка inline-клавиатуры с выбором статуса фильма
@@ -173,11 +291,34 @@ public class MessageSender {
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
 
-        rowsInline.add(createButtonRow("Запланировать", "selected_planned"));
-        rowsInline.add(createButtonRow("Просмотрен", "selected_watched"));
+        // Первый ряд кнопок: Запланировать и Просмотрен
+        rowsInline.add(
+                List.of(
+                        InlineKeyboardButton.builder()
+                                .text("📋 Запланировать")
+                                .callbackData("selected_planned")
+                                .build(),
+                        InlineKeyboardButton.builder()
+                                .text("✔️ Просмотрен")
+                                .callbackData("selected_watched")
+                                .build()
+                )
+        );
+
+        // Второй ряд кнопок: Главное меню
+        rowsInline.add(
+                List.of(
+                        InlineKeyboardButton.builder()
+                                .text("🏠 Главное меню")
+                                .callbackData("main_menu")
+                                .build()
+                )
+        );
+
         sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_MOVIE_TITLE);
         markupInline.setKeyboard(rowsInline);
-        SendMessage message = new SendMessage(chatId, "Выберите статус для добавления фильма:");
+
+        SendMessage message = new SendMessage(chatId, "🎬 Выберите статус для фильма:");
         message.setReplyMarkup(markupInline);
 
         sendMessage(message);
@@ -185,7 +326,7 @@ public class MessageSender {
 
     // Меню для входящих и исходящих запросов в друзья
     public void sendFriendRequestsMenu(String chatId, List<AppUser> friendRequests, boolean isIncoming) {
-        String header = isIncoming ? "Ваши входящие запросы в друзья:" : "Ваши исходящие запросы в друзья:";
+        String header = isIncoming ? "📥 Ваши входящие запросы:" : "📤 Ваши исходящие запросы:";
         SendMessage message = new SendMessage(chatId, header);
 
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
@@ -194,10 +335,10 @@ public class MessageSender {
         for (AppUser request : friendRequests) {
             List<InlineKeyboardButton> rowInline = new ArrayList<>();
             if (isIncoming) {
-                rowInline.add(createButton("Принять: " + request.getUsername(), "accept_request:" + request.getUsername()));
-                rowInline.add(createButton("Отклонить: " + request.getUsername(), "reject_request:" + request.getUsername()));
+                rowInline.add(createButton("✔️ Принять: " + request.getUsername(), "accept_request:" + request.getUsername()));
+                rowInline.add(createButton("❌ Отклонить: " + request.getUsername(), "reject_request:" + request.getUsername()));
             } else {
-                rowInline.add(createButton("Отменить: " + request.getUsername(), "cancel_request:" + request.getUsername()));
+                rowInline.add(createButton("❌ Отменить: " + request.getUsername(), "cancel_request:" + request.getUsername()));
             }
             rowsInline.add(rowInline);
         }
@@ -210,7 +351,7 @@ public class MessageSender {
 
     // Меню друзей
     public void sendFriendsMenu(String chatId, List<AppUser> friends) {
-        StringBuilder response = new StringBuilder("Ваши друзья:\n");
+        StringBuilder response = new StringBuilder("👥 Ваши друзья:\n");
         for (int i = 0; i < friends.size(); i++) {
             response.append(i + 1).append(". ").append(friends.get(i).getUsername()).append("\n");
         }
@@ -219,14 +360,14 @@ public class MessageSender {
         List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
 
         if (!friends.isEmpty()) {
-            rowsInline.add(createButtonRow("Удалить друга", "delete_friend"));
+            rowsInline.add(createButtonRow("❌ Удалить друга", "delete_friend"));
         }
-        rowsInline.add(createButtonRow("Отправить запрос в друзья", "send_friend_request"));
+        rowsInline.add(createButtonRow("➕ Отправить запрос", "send_friend_request"));
         rowsInline.add(Arrays.asList(
-                createButton("Входящие заявки", "incoming_requests"),
-                createButton("Исходящие заявки", "outgoing_requests")
+                createButton("📥 Входящие заявки", "incoming_requests"),
+                createButton("📤 Исходящие заявки", "outgoing_requests")
         ));
-        rowsInline.add(createButtonRow("Главное меню", "main_menu"));
+        rowsInline.add(createButtonRow("🏠 Главное меню", "main_menu"));
 
         markupInline.setKeyboard(rowsInline);
         SendMessage message = new SendMessage(chatId, response.toString());
@@ -234,6 +375,7 @@ public class MessageSender {
 
         sendMessage(message);
     }
+
 
     // Утилиты для создания кнопок
     private List<InlineKeyboardButton> createButtonRow(String text, String callbackData) {
@@ -244,13 +386,22 @@ public class MessageSender {
         return InlineKeyboardButton.builder().text(text).callbackData(callbackData).build();
     }
 
+    // Отправка сообщения, упрощения для этого класса
     private void sendMessage(SendMessage message) {
         try {
-            bot.execute(message);
+            movieBot.execute(message);
             logger.info("Message sent to chatId: {}", message.getChatId());
         } catch (TelegramApiException e) {
             logger.error("Error sending message to chatId: {}", message.getChatId(), e);
         }
+    }
+
+    // Отправка сообщения
+    public void sendMessage(String chatId, String text) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(text);
+        sendMessage(message);
     }
 
     private void sendMessageWithInlineKeyboard(String chatId, String text, List<List<InlineKeyboardButton>> buttons) {
@@ -260,4 +411,6 @@ public class MessageSender {
         message.setReplyMarkup(inlineKeyboardMarkup);
         sendMessage(message);
     }
+
+
 }
