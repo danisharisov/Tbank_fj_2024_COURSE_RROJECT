@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AppUserService {
     private static final Logger logger = LoggerFactory.getLogger(AppUserService.class);
@@ -32,5 +34,11 @@ public class AppUserService {
     @Transactional
     public void saveUser(AppUser user) {
         appUserRepository.save(user);
+    }
+
+    //Возвращает всех пользователей
+    @Transactional
+    public List<AppUser> findAllUsers() {
+        return appUserRepository.findAll();
     }
 }
