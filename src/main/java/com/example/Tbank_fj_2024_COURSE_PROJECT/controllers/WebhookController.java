@@ -1,5 +1,6 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.controllers;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.services.RabbitMQSender;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -13,12 +14,11 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 @RestController
 public class WebhookController {
 
-    private final RabbitTemplate rabbitTemplate;
     private final String secretToken;
+    private final RabbitMQSender rabbitMQSender;
 
-    public WebhookController(RabbitTemplate rabbitTemplate,
-                             @Value("${telegram.bot.secret.token}") String secretToken) {
-        this.rabbitTemplate = rabbitTemplate;
+    public WebhookController(RabbitMQSender rabbitMQSender, @Value("${telegram.bot.secret.token}") String secretToken) {
+        this.rabbitMQSender = rabbitMQSender;
         this.secretToken = secretToken;
     }
 
@@ -31,7 +31,7 @@ public class WebhookController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid Secret Token");
         }
 
-        rabbitTemplate.convertAndSend("telegram_updates_queue", update);
+        rabbitMQSender.send("telegram_updates_queue", update);
         return ResponseEntity.ok("Webhook received and sent to RabbitMQ");
     }
 }
