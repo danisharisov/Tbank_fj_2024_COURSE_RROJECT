@@ -1,6 +1,7 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.services.RabbitMQSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CallbackHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CommandHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.UnloggedStateHandler;
@@ -33,17 +34,19 @@ public class MovieBot extends TelegramLongPollingBot {
     private final SessionService sessionService;
     private final MessageSender messageSender;
     private final UnloggedStateHandler unloggedStateHandler;
+    private final RabbitMQSender rabbitMQSender;
 
 
     @Autowired
     public MovieBot(CommandHandler commandHandler, CallbackHandler callbackHandler,
                     SessionService sessionService, MessageSender messageSender,
-                    UnloggedStateHandler unloggedStateHandler) {
+                    UnloggedStateHandler unloggedStateHandler, RabbitMQSender rabbitMQSender) {
         this.commandHandler = commandHandler;
         this.callbackHandler = callbackHandler;
         this.sessionService = sessionService;
         this.messageSender = messageSender;
         this.unloggedStateHandler = unloggedStateHandler;
+        this.rabbitMQSender = rabbitMQSender;
     }
 
     private void handleTextMessage(String chatId, String messageText, String username) {
@@ -99,6 +102,15 @@ public class MovieBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
+        try {
+            rabbitMQSender.sendMessage(update);
+            logger.info("Message sent to RabbitMQ: {}", update);
+        } catch (Exception e) {
+            logger.error("Failed to send message to RabbitMQ", e);
+        }
+    }
+
+    public void processUpdate(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
@@ -122,7 +134,7 @@ public class MovieBot extends TelegramLongPollingBot {
         }
     }
 
-    public void sendPhotoWithInlineKeyboard(String chatId, String photoUrl, String caption, List<List<InlineKeyboardButton>> buttons) {
+    public void handlePhotoMessage(String chatId, String photoUrl, String caption, List<List<InlineKeyboardButton>> buttons) {
         SendPhoto sendPhoto = new SendPhoto();
         sendPhoto.setChatId(chatId);
 

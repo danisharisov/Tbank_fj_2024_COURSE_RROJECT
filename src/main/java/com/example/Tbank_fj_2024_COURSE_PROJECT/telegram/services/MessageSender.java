@@ -213,7 +213,7 @@ public class MessageSender  {
 
         // Если есть постер, отправляем его вместе с текстом и кнопками
         if (movie.getPoster() != null && !movie.getPoster().isEmpty() && !movie.getPoster().equals("N/A")) {
-            movieBot.sendPhotoWithInlineKeyboard(chatId, movie.getPoster(), messageText, buttons);
+            movieBot.handlePhotoMessage(chatId, movie.getPoster(), messageText, buttons);
         } else {
             // Если постера нет, просто отправляем текст с кнопками
             sendMessageWithInlineKeyboard(chatId, messageText, buttons);
@@ -276,7 +276,7 @@ public class MessageSender  {
 
         // Если есть постер, отправляем его вместе с текстом и кнопками
         if (movie.getPoster() != null && !movie.getPoster().isEmpty() && !movie.getPoster().equals("N/A")) {
-            movieBot.sendPhotoWithInlineKeyboard(chatId, movie.getPoster(), message, buttons);
+            movieBot.handlePhotoMessage(chatId, movie.getPoster(), message, buttons);
         } else {
             // Если постера нет, просто отправляем текст с кнопками
             sendMessageWithInlineKeyboard(chatId, message, buttons);
