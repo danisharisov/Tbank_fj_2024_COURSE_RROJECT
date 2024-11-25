@@ -9,6 +9,7 @@ import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -83,6 +84,7 @@ public class MovieBot extends TelegramWebhookBot {
     }
 
     @Override
+    @RabbitListener(queues = "telegram_updates_queue")
     public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();

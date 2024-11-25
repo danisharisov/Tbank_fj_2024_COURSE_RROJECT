@@ -47,6 +47,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-logging'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.security:spring-security-crypto'
+	implementation 'org.springframework.boot:spring-boot-starter-amqp'
 	implementation 'org.slf4j:slf4j-api:2.0.16'
 	implementation 'org.telegram:telegrambots:6.9.7.1'
 	implementation 'org.telegram:telegrambotsextensions:6.9.7.1'
