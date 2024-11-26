@@ -36,6 +36,12 @@ public class CancelFriendRequestCommand extends Command {
         AppUser currentUser = getCurrentUser(chatId);
         String targetUsername = sessionService.getContext(chatId);
 
+        if (targetUsername == null || targetUsername.isBlank()) {
+            logger.error("Target username is null or empty for chatId: {}", chatId);
+            messageSender.sendMessage(chatId, "Ошибка при отмене запроса в друзья: не указано имя друга.");
+            return;
+        }
+
         try {
             logger.info("Attempting to cancel friend request from {} to {}", currentUser.getUsername(), targetUsername);
             friendshipService.cancelFriendRequest(currentUser.getUsername(), targetUsername);

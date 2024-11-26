@@ -1,10 +1,8 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.MovieStatus;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.services.UserMovieService;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.UserMovie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.services.*;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
@@ -14,9 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Component
 public class ViewPlannedMoviesCommand extends Command {

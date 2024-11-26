@@ -1,8 +1,8 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.services.UserMovieService;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.services.*;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
@@ -32,16 +32,21 @@ public class ViewWatchedMoviesCommand extends Command {
         AppUser currentUser = getCurrentUser(chatId);
         logger.info("Executing ViewWatchedMoviesCommand for user: {}, chatId: {}", currentUser.getUsername(), chatId);
 
-        List<Movie> watchedMovies = userMovieService.getWatchedMoviesByUserId(currentUser.getId());
-        if (watchedMovies.isEmpty()) {
-            logger.info("No watched movies found for user: {}, chatId: {}", currentUser.getUsername(), chatId);
-            messageSender.sendMessage(chatId, "У вас нет просмотренных фильмов.");
-            messageSender.sendMainMenu(chatId);
-        } else {
-            logger.info("Found {} watched movies for user: {}, chatId: {}", watchedMovies.size(), currentUser.getUsername(), chatId);
-            messageSender.sendWatchedMovies(chatId, watchedMovies);
-            sessionService.setUserState(chatId, UserStateEnum.WAITING_WATCHED_MOVIE_NUMBER);
-            sessionService.setMovieIsPlanned(chatId, false);
+        try {
+            List<Movie> watchedMovies = userMovieService.getWatchedMoviesByUserId(currentUser.getId());
+            if (watchedMovies.isEmpty()) {
+                logger.info("No watched movies found for user: {}, chatId: {}", currentUser.getUsername(), chatId);
+                messageSender.sendMessage(chatId, "У вас нет просмотренных фильмов.");
+                messageSender.sendMainMenu(chatId);
+            } else {
+                logger.info("Found {} watched movies for user: {}, chatId: {}", watchedMovies.size(), currentUser.getUsername(), chatId);
+                messageSender.sendWatchedMovies(chatId, watchedMovies);
+                sessionService.setUserState(chatId, UserStateEnum.WAITING_WATCHED_MOVIE_NUMBER);
+                sessionService.setMovieIsPlanned(chatId, false);
+            }
+        } catch (Exception e) {
+            logger.error("Error while fetching watched movies for user: {}, chatId: {}, error: {}", currentUser.getUsername(), chatId, e.getMessage());
+            messageSender.sendMessage(chatId, "Произошла ошибка при загрузке просмотренных фильмов. Попробуйте позже.");
         }
     }
 }

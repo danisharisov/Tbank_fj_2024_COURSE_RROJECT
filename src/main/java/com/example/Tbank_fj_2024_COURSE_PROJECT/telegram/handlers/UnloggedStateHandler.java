@@ -10,9 +10,9 @@ import java.util.List;
 @Component
 public class UnloggedStateHandler {
     @Autowired
-    private MessageSender messageSender;
+    MessageSender messageSender;
     @Autowired
-    private StartCommand startCommand;
+    StartCommand startCommand;
 
     public void handleUnloggedState(String chatId, String messageText, String username) {
         if ("/start".equals(messageText)) {

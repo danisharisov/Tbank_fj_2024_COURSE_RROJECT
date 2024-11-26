@@ -1,8 +1,9 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.services.MovieService;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.services.UserMovieService;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.services.*;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;

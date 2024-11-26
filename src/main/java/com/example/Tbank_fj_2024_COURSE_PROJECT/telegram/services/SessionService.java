@@ -95,9 +95,5 @@ public class SessionService {
             this.context = context != null ? context : "";
         }
 
-        @Override
-        public String toString() {
-            return "UserState{state='" + state + "', context='" + context + "', selectedMovie=" + (selectedMovie != null ? selectedMovie.getTitle() : "null") + '}';
-        }
     }
 }

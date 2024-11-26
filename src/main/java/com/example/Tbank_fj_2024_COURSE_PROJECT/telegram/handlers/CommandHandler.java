@@ -1,7 +1,8 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.*;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.AddFriendCommand;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship.DeleteFriendCommand;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.movie.*;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
@@ -49,7 +50,7 @@ public class CommandHandler {
     }
 
     @PostConstruct
-    private void initCommandMap() {
+    void initCommandMap() {
         commandMap.put(UserStateEnum.WAITING_FOR_MOVIE_TITLE, addMovieCommand);
         commandMap.put(UserStateEnum.WAITING_WATCHED_MOVIE_NUMBER, pickWatchedMovieCommand);
         commandMap.put(UserStateEnum.WAITING_PLANNED_MOVIE_NUMBER, pickPlannedMovieCommand);

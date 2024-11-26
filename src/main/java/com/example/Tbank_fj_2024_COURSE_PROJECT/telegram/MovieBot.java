@@ -1,13 +1,13 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram;
 
-import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.rabbitmq.RabbitMQSender;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CallbackHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CommandHandler;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.rabbitmq.RabbitMQSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.UnloggedStateHandler;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -66,7 +66,7 @@ public class OmdbService {
         return Collections.emptyList();
     }
 
-    protected Movie mapOmdbResponseToMovie(OmdbMovieResponse omdbMovieResponse) {
+    public Movie mapOmdbResponseToMovie(OmdbMovieResponse omdbMovieResponse) {
         Movie movie = new Movie();
         movie.setTitle(omdbMovieResponse.getTitle());
         movie.setYear(omdbMovieResponse.getYear());
@@ -78,7 +78,7 @@ public class OmdbService {
         return movie;
     }
 
-    private List<Movie> mapOmdbSearchResultToMovies(OmdbSearchResult searchResult) {
+    public List<Movie> mapOmdbSearchResultToMovies(OmdbSearchResult searchResult) {
         List<Movie> movies = new ArrayList<>();
         for (OmdbMovie omdbMovie : searchResult.getSearch()) {
             Movie movie = new Movie();
@@ -95,7 +95,7 @@ public class OmdbService {
         return movies;
     }
 
-    private String encodeValue(String value) {
+    public String encodeValue(String value) {
         try {
             return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
         } catch (Exception e) {

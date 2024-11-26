@@ -1,8 +1,8 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.friendship;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.services.FriendshipService;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.slf4j.Logger;
@@ -37,6 +37,12 @@ public class AcceptFriendRequestCommand extends Command {
 
         if (currentUser != null) {
             String friendUsername = sessionService.getContext(chatId);
+            if (friendUsername == null) {
+                logger.warn("Friend username is null for chatId: {}", chatId);
+                messageSender.sendMessage(chatId, "Ошибка: имя друга не найдено.");
+                return;
+            }
+
             logger.info("Accepting friend request from user: {} for current user: {}", friendUsername, currentUser.getUsername());
 
             friendshipService.acceptFriendRequest(currentUser.getUsername(), friendUsername);

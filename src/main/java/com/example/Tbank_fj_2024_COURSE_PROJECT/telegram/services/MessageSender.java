@@ -1,10 +1,10 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.MovieBot;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.MovieStatus;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.UserMovie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.MovieBot;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

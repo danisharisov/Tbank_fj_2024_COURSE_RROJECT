@@ -15,7 +15,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = "movies")
 public class AppUser {
 
     @Id
@@ -25,6 +24,7 @@ public class AppUser {
     @Column(unique = true, nullable = true)
     private String username;
 
-    @Column(unique = true, nullable = false) // Telegram ID обязателен и уникален
+    @Column(unique = true, nullable = false)
     private String telegramId;
+
 }
