@@ -37,7 +37,7 @@ public class CallbackHandler {
 
     private final Map<String, Consumer<String>> callbackActions = new HashMap<>();
 
-    public CallbackHandler(SessionService sessionService, MessageSender messageSender,
+     CallbackHandler(SessionService sessionService, MessageSender messageSender,
                            DeleteMovieCommand deleteMovieCommand, DeletePlannedMovieCommand deletePlannedMovieCommand,
                            SelectMovieCommand selectMovieCommand, ViewWatchedMoviesCommand viewWatchedMoviesCommand,
                            ViewPlannedMoviesCommand viewPlannedMoviesCommand, FriendsMenuCommand friendsMenuCommand,
@@ -60,7 +60,7 @@ public class CallbackHandler {
     }
 
     @PostConstruct
-    public void init() {
+    protected void init() {
         callbackActions.put("main_menu", chatId -> messageSender.sendMainMenu(chatId));
         callbackActions.put("add_movie", chatId -> {
             sessionService.setUserState(chatId, UserStateEnum.WAITING_FOR_MOVIE_STATUS_SELECTION);

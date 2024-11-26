@@ -46,7 +46,7 @@ public class MovieBot extends TelegramWebhookBot {
         this.unloggedStateHandler = unloggedStateHandler;
     }
 
-    private void handleTextMessage(String chatId, String messageText, String username) {
+    void handleTextMessage(String chatId, String messageText, String username) {
         SessionService.UserState userState = sessionService.getUserState(chatId);
         AppUser currentUser = sessionService.getCurrentUser(chatId);
 
@@ -109,7 +109,7 @@ public class MovieBot extends TelegramWebhookBot {
         return null;
     }
 
-    public void sendPhotoWithInlineKeyboard(String chatId, String photoUrl, String caption, List<List<InlineKeyboardButton>> buttons) {
+    public void handlePhotoMessage(String chatId, String photoUrl, String caption, List<List<InlineKeyboardButton>> buttons) {
         SendPhoto sendPhoto = new SendPhoto();
         sendPhoto.setChatId(chatId);
         sendPhoto.setPhoto(new InputFile(photoUrl));

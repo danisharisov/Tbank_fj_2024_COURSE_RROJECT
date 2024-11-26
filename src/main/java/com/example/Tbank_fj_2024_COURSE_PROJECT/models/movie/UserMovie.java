@@ -42,4 +42,10 @@ public class UserMovie {
 
     @Column(name = "suggested_by")
     private String suggestedBy;
+
+    public UserMovie(AppUser user, Movie movie) {
+        this.user = user;
+        this.movie = movie;
+    }
+
 }
