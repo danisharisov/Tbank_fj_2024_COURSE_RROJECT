@@ -151,7 +151,7 @@ public class UserMovieService {
 
     // Рассчитывает среднюю оценку друзей для фильма
     public double getAverageFriendRating(AppUser user, Movie movie) {
-        List<AppUser> friends = friendshipService.getFriends(user.getUsername());
+        List<AppUser> friends = new ArrayList<>(friendshipService.getFriends(user.getUsername()));
         friends.add(user);
         List<UserMovie> friendRatings = userMovieRepository.findByMovieAndUserIn(movie, friends);
 
@@ -216,7 +216,12 @@ public class UserMovieService {
                 return;
             }
         }
-        UserMovie newUserMovie = createUserMovie(friend,movie,MovieStatus.WANT_TO_WATCH_BY_FRIEND);
+
+        UserMovie newUserMovie = createUserMovie(friend, movie, MovieStatus.WANT_TO_WATCH_BY_FRIEND);
+        if (newUserMovie == null) {
+            throw new IllegalStateException("Не удалось создать объект UserMovie для фильма " + movie.getImdbId());
+        }
+
         newUserMovie.setSuggestedBy(suggestedByUsername);
         saveUserMovie(newUserMovie);
         logger.info("Фильм предложен пользователю {} от {}", friend.getUsername(), suggestedByUsername);
