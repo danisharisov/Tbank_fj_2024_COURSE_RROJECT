@@ -7,9 +7,11 @@ on:
       - main
       - reviewed_dev_to_weebhook
       - local_dev
-
     paths:
       - .github/workflows/ci.yml
+  pull_request:
+    branches:
+      - main
 
 permissions:
   packages: write
