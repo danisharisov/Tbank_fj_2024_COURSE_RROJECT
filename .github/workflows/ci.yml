@@ -177,4 +177,3 @@ jobs:
       - name: Push Docker image to GitHub Container Registry
         run: docker push ghcr.io/danisharisov/telegram-bot:latest
 
-
