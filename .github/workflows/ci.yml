@@ -118,15 +118,14 @@ jobs:
       - name: Run Coverage
         run: ./gradlew jacocoTestReport
 
-      - name: Upload Jacoco Coverage Report
-        uses: madrapps/jacoco-report@v1.7.1
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v3
         with:
-          paths: ${{ github.workspace }}/build/reports/jacoco/test/jacocoTestReport.xml
-          token: ${{ secrets.GITHUB_TOKEN }}
-          min-coverage-overall: 50
-          min-coverage-changed-files: 20
-          title: Code Coverage
-          update-comment: true
+          files: ./build/reports/jacoco/test/jacocoTestReport.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unittests
+          name: Full Code Coverage
+          fail_ci_if_error: true
 
   static_analysis:
     runs-on: ubuntu-latest
