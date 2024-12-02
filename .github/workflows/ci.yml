@@ -103,13 +103,13 @@ jobs:
         run: |
           ls -l ./build/reports/jacoco/test/ || echo "Coverage directory does not exist"
 
-      - name: Upload Full Coverage Report as Artifact
+      - name: Save Coverage Report as Artifact
         uses: actions/upload-artifact@v3
         with:
           name: full-jacoco-report
           path: ./build/reports/jacoco/test/
 
-      - name: Upload Full Report for PR Comment
+      - name: Post Coverage Summary as PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: Code Coverage
