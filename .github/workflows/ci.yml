@@ -109,13 +109,20 @@ jobs:
           name: full-jacoco-report
           path: ./build/reports/jacoco/test/
 
+      - name: Save HTML Coverage Report as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: jacoco-html-report
+          path: ./build/reports/jacocoHtml/
+
       - name: Post Coverage Summary as PR Comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: Code Coverage
           message: |
             The full coverage report has been uploaded successfully.
-            You can download it from the Actions artifacts section.
+            You can download the full XML report and HTML report from the Actions artifacts section.
+            - **[HTML Coverage Report](./build/reports/jacocoHtml/index.html)**
 
   static_analysis:
     runs-on: ubuntu-latest
