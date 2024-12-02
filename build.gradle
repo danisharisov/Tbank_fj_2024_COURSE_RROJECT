@@ -31,7 +31,7 @@ jacocoTestReport {
 			outputLocation.set(layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml"))
 		}
 		html {
-			required.set(true) // Включает генерацию HTML отчёта
+			required.set(true)
 			outputLocation.set(layout.buildDirectory.dir("jacocoHtml"))
 		}
 	}
