@@ -7,14 +7,12 @@ on:
       - main
       - reviewed_dev_to_weebhook
       - local_dev
-    paths:
-      - .github/workflows/ci.yml
   pull_request:
     branches:
       - main
 
 permissions:
-  packages: write
+  contents: write
   pull-requests: write
 
 jobs:
@@ -29,20 +27,12 @@ jobs:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
           POSTGRES_DB: test
-        options: >-
-          --health-cmd="pg_isready -U test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-
-      - name: Verify gradlew permissions
-        run: ls -l ./gradlew
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -74,11 +64,6 @@ jobs:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
           POSTGRES_DB: test
-        options: >-
-          --health-cmd="pg_isready -U test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -92,49 +77,45 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Verify gradlew permissions
-        run: ls -l ./gradlew
-
       - name: Run tests
         run: ./gradlew test
 
-coverage_report:
-  runs-on: ubuntu-latest
-  needs: test
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+  coverage_report:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Make gradlew executable
-      run: chmod +x ./gradlew
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
-    - name: Run Coverage
-      run: ./gradlew jacocoTestReport --rerun-tasks
+      - name: Run Coverage Report
+        run: ./gradlew jacocoTestReport --rerun-tasks
 
-    - name: Save Coverage Report as Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: jacoco-report
-        path: ./build/reports/jacoco/test/
+      - name: Verify Coverage Report
+        run: |
+          ls -l ./build/reports/jacoco/test/ || echo "Coverage directory does not exist"
 
-    - name: Generate HTML Coverage Report
-      run: |
-        echo "Coverage HTML Report Directory:"
-        ls -l ./build/reports/jacoco/test/
+      - name: Upload Full Coverage Report as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: full-jacoco-report
+          path: ./build/reports/jacoco/test/
 
-    - name: Post Comment with Coverage Summary
-      uses: marocchino/sticky-pull-request-comment@v2
-      with:
-        header: Coverage Report
-        message: |
-          The coverage report has been generated successfully!
-          You can download the report as an artifact in the Actions page.
+      - name: Upload Full Report for PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: Code Coverage
+          message: |
+            The full coverage report has been uploaded successfully.
+            You can download it from the Actions artifacts section.
 
   static_analysis:
     runs-on: ubuntu-latest
@@ -148,9 +129,6 @@ coverage_report:
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
 
       - name: Run static code analysis
         run: ./gradlew check
