@@ -130,6 +130,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Verify gradlew permissions
+        run: ls -l ./gradlew
+
       - name: Run static code analysis
         run: ./gradlew check
 
