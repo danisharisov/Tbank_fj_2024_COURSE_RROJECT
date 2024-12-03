@@ -7,33 +7,32 @@ import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.command.Command;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
-public class PickWatchedMovieCommand implements Command {
-    private final SessionService sessionService;
+public class PickWatchedMovieCommand extends Command {
+
+    private static final Logger logger = LoggerFactory.getLogger(PickWatchedMovieCommand.class);
     private final UserMovieService userMovieService;
-    private final MessageSender messageSender;
 
     @Autowired
-    public PickWatchedMovieCommand(SessionService sessionService, UserMovieService userMovieService,
-                                   MessageSender messageSender) {
-        this.sessionService = sessionService;
+    public PickWatchedMovieCommand(SessionService sessionService, UserMovieService userMovieService, MessageSender messageSender) {
+        super(sessionService, messageSender);
         this.userMovieService = userMovieService;
-        this.messageSender = messageSender;
     }
+    // Выбор просмотренного фильма по номеру
     @Override
     public void execute(String chatId, List<String> args) {
+        AppUser currentUser = getCurrentUser(chatId);
+        logger.info("Executing PickWatchedMovieCommand for user: {}, chatId: {}", currentUser.getUsername(), chatId);
 
-        AppUser currentUser = sessionService.getCurrentUser(chatId);
-        if (currentUser == null) {
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Используйте /login для входа.");
-            return;
-        }
         if (args.isEmpty()) {
+            logger.warn("No movie index provided for chatId: {}", chatId);
             messageSender.sendMessage(chatId, "Укажите номер фильма, который хотите выбрать.");
             return;
         }
@@ -42,22 +41,26 @@ public class PickWatchedMovieCommand implements Command {
         try {
             movieIndex = Integer.parseInt(args.get(0));
         } catch (NumberFormatException e) {
+            logger.warn("Invalid movie index format provided: {}, chatId: {}", args.get(0), chatId);
             messageSender.sendMessage(chatId, "Некорректный формат номера фильма. Пожалуйста, введите числовое значение.");
             return;
         }
 
-            List<UserMovie> watchedMovies = userMovieService.getWatchedMovies(currentUser);
-            if (movieIndex < 1 || movieIndex > watchedMovies.size()) {
-                messageSender.sendMessage(chatId, "Некорректный номер. Попробуйте снова.");
-            } else {
-                UserMovie selectedMovie = watchedMovies.get(movieIndex - 1);
-                double averageFriendRating = userMovieService.getAverageFriendRating(currentUser, selectedMovie.getMovie());
-                messageSender.sendMovieDetails(chatId, selectedMovie.getMovie(), selectedMovie.getRating(), averageFriendRating);
+        List<UserMovie> watchedMovies = userMovieService.getUserMoviesWithDetails(currentUser);
+        if (movieIndex < 1 || movieIndex > watchedMovies.size()) {
+            logger.warn("Invalid movie index: {}, chatId: {}", movieIndex, chatId);
+            messageSender.sendMessage(chatId, "Некорректный номер. Попробуйте снова.");
+        } else {
+            UserMovie selectedMovie = watchedMovies.get(movieIndex - 1);
+            double averageFriendRating = userMovieService.getAverageFriendRating(currentUser, selectedMovie.getMovie());
 
-                // Сохраняем выбранный фильм и устанавливаем состояние
-                sessionService.setSelectedMovie(chatId, selectedMovie.getMovie());
-                sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_SELECTION_USER);
-            }
+            logger.info("Selected movie: {}, User rating: {}, Average friend rating: {}, chatId: {}",
+                    selectedMovie.getMovie().getTitle(), selectedMovie.getRating(), averageFriendRating, chatId);
 
+            messageSender.sendMovieDetails(chatId, selectedMovie.getMovie(), selectedMovie.getRating(), averageFriendRating);
+
+            sessionService.setSelectedMovie(chatId, selectedMovie.getMovie());
+            sessionService.setUserState(chatId, UserStateEnum.WAITING_MOVIE_SELECTION_USER);
+        }
     }
 }

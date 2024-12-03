@@ -1,223 +1,186 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.MovieStatus;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.UserMovie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.MovieBot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.util.Collections;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class MessageSenderTest {
 
     @Mock
-    private TelegramLongPollingBot bot;
+    private MovieBot movieBot;
 
     @Mock
     private SessionService sessionService;
 
-    @InjectMocks
     private MessageSender messageSender;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        messageSender = new MessageSender(movieBot, sessionService, null);
     }
 
+    // Тест отправки основного меню
     @Test
-    void testSendMainMenu() throws TelegramApiException {
-        String chatId = "123456";
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
+    void sendMainMenu_Success() throws TelegramApiException {
+        String chatId = "12345";
 
         messageSender.sendMainMenu(chatId);
 
         verify(sessionService, times(1)).clearUserState(chatId);
-        verify(bot, times(1)).execute(any(SendMessage.class));
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
     }
 
+    // Тест отправки списка просмотренных фильмов
     @Test
-    void testSendMessage() throws TelegramApiException {
-        String chatId = "123456";
-        String text = "Test message";
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
-
-        messageSender.sendMessage(chatId, text);
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
-    }
-
-    @Test
-    void testSendWatchedMovies() throws TelegramApiException {
-        String chatId = "123456";
-        Movie movie1 = new Movie();
-        movie1.setTitle("Movie 1");
-        movie1.setYear("2023");
-
-        Movie movie2 = new Movie();
-        movie2.setTitle("Movie 2");
-        movie2.setYear("2022");
-
-        List<Movie> watchedMovies = List.of(movie1, movie2);
-
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
+    void sendWatchedMovies_Success() throws TelegramApiException {
+        String chatId = "12345";
+        List<Movie> watchedMovies = List.of(new Movie("tt1234567", "Test Movie", "2024"));
 
         messageSender.sendWatchedMovies(chatId, watchedMovies);
 
-        verify(bot, times(1)).execute(any(SendMessage.class));
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
     }
 
+    // Тест отправки сообщения с пустым списком запланированных фильмов
     @Test
-    void testSendSimpleMovieList_NoMovies() throws TelegramApiException {
-        String chatId = "123456";
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
-
-        messageSender.sendSimpleMovieList(chatId, List.of());
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
-    }
-
-    @Test
-    void testSendMovieDetails() throws TelegramApiException {
-        String chatId = "123456";
-        Movie movie = new Movie();
-        movie.setTitle("Movie 1");
-        movie.setYear("2023");
-
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
-
-        messageSender.sendMovieDetails(chatId, movie, 8.0, 7.5);
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
-        verify(sessionService, times(1)).setSelectedMovie(chatId, movie);
-    }
-
-    @Test
-    void testSendFriendsMenu() throws TelegramApiException {
-        String chatId = "123456";
-        AppUser friend1 = new AppUser();
-        friend1.setUsername("friend1");
-
-        AppUser friend2 = new AppUser();
-        friend2.setUsername("friend2");
-
-        List<AppUser> friends = List.of(friend1, friend2);
-
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
-
-        messageSender.sendFriendsMenu(chatId, friends);
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
-    }
-
-    @Test
-    void testSendFriendRequestsMenu_IncomingRequests() throws TelegramApiException {
-        String chatId = "123456";
-        AppUser requester1 = new AppUser();
-        requester1.setUsername("requester1");
-
-        AppUser requester2 = new AppUser();
-        requester2.setUsername("requester2");
-
-        List<AppUser> incomingRequests = List.of(requester1, requester2);
-
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
-
-        messageSender.sendFriendRequestsMenu(chatId, incomingRequests, true);
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
-    }
-
-    @Test
-    void testSendFriendRequestsMenu_OutgoingRequests() throws TelegramApiException {
-        String chatId = "123456";
-        AppUser friend1 = new AppUser();
-        friend1.setUsername("friend1");
-
-        AppUser friend2 = new AppUser();
-        friend2.setUsername("friend2");
-
-        List<AppUser> outgoingRequests = List.of(friend1, friend2);
-
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
-
-        messageSender.sendFriendRequestsMenu(chatId, outgoingRequests, false);
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
-    }
-
-    @Test
-    void testSendPlannedMovieDetailsWithOptions() throws TelegramApiException {
-        String chatId = "123456";
+    void sendPlannedMovies_EmptyList() throws TelegramApiException {
+        String chatId = "12345";
         AppUser user = new AppUser();
-        user.setUsername("user1");
 
-        Movie movie = new Movie();
-        movie.setTitle("Planned Movie");
-        movie.setYear("2023");
-        movie.setImdbRating("7.0");
+        messageSender.sendPlannedMovies(chatId, Collections.emptyList(), user);
 
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
-
-        messageSender.sendPlannedMovieDetailsWithOptions(chatId, user, movie, 10, 8.5, true);
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
-        verify(sessionService, times(1)).setSelectedMovie(chatId, movie);
+        verify(movieBot, times(2)).execute(any(SendMessage.class));
     }
 
-
+    // Тест отправки списка запланированных фильмов
     @Test
-    void testSendSimpleMovieList_WithMovies() throws TelegramApiException {
-        String chatId = "123456";
-        Movie movie1 = new Movie();
-        movie1.setTitle("Movie 1");
-        movie1.setYear("2021");
-        movie1.setImdbId("tt1234567");
+    void sendPlannedMovies_WithMovies() throws TelegramApiException {
+        String chatId = "12345";
+        AppUser user = new AppUser();
+        user.setUsername("testUser");
 
-        Movie movie2 = new Movie();
-        movie2.setTitle("Movie 2");
-        movie2.setYear("2022");
-        movie2.setImdbId("tt7654321");
+        Movie movie = new Movie("tt1234567", "Planned Movie", "2024");
+        UserMovie userMovie = new UserMovie();
+        userMovie.setMovie(movie);
+        userMovie.setStatus(MovieStatus.WANT_TO_WATCH);
 
-        List<Movie> movies = List.of(movie1, movie2);
+        List<UserMovie> plannedMovies = List.of(userMovie);
 
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
+        messageSender.sendPlannedMovies(chatId, plannedMovies, user);
 
-        messageSender.sendSimpleMovieList(chatId, movies);
-
-        verify(bot, times(1)).execute(any(SendMessage.class));
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
     }
 
-
+    // Тест отправки сообщения с выбором статуса фильма
     @Test
-    void testProcessAddMovieStatusSelection() throws TelegramApiException {
-        String chatId = "123456";
-        Message mockMessage = new Message();
-        when(bot.execute(any(SendMessage.class))).thenReturn(mockMessage);
+    void processAddMovieStatusSelection_Success() throws TelegramApiException {
+        String chatId = "12345";
 
         messageSender.processAddMovieStatusSelection(chatId);
 
-        verify(bot, times(1)).execute(any(SendMessage.class));
         verify(sessionService, times(1)).setUserState(chatId, UserStateEnum.WAITING_FOR_MOVIE_TITLE);
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
     }
 
+    // Тест отправки деталей фильма
+    @Test
+    void sendMovieDetails_Success() throws TelegramApiException {
+        String chatId = "12345";
+        Movie movie = new Movie("tt1234567", "Test Movie", "2024");
+        movie.setImdbRating("8.0");
+
+        messageSender.sendMovieDetails(chatId, movie, 8.0, 7.5);
+
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
+        verify(sessionService, times(1)).setSelectedMovie(chatId, movie);
+    }
+
+    // Тест отправки простого списка фильмов
+    @Test
+    void sendSimpleMovieList_WithMovies() throws TelegramApiException {
+        String chatId = "12345";
+        List<Movie> movies = List.of(new Movie("tt1234567", "Movie 1", "2024"));
+
+        messageSender.sendSimpleMovieList(chatId, movies);
+
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
+    }
+
+    // Тест отправки пустого списка фильмов
+    @Test
+    void sendSimpleMovieList_EmptyMovies() throws TelegramApiException {
+        String chatId = "12345";
+
+        messageSender.sendSimpleMovieList(chatId, Collections.emptyList());
+
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
+    }
+
+    // Тест отправки сообщения
+    @Test
+    void sendMessage_Success() throws TelegramApiException {
+        String chatId = "12345";
+        String text = "Test message";
+
+        messageSender.sendMessage(chatId, text);
+
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
+    }
+
+    @Test
+    void sendPlannedMovieDetailsWithOptions_OwnMovie() throws TelegramApiException {
+        String chatId = "12345";
+        AppUser user = new AppUser();
+        user.setUsername("testUser");
+
+        Movie movie = new Movie();
+        movie.setImdbId("tt1234567");
+        movie.setTitle("Test Movie");
+        movie.setYear("2024");
+        movie.setImdbRating("8.5");
+        movie.setPoster("https://example.com/poster.jpg");
+
+        int userHype = 3;
+        double averageFriendHype = 2.5;
+
+        messageSender.sendPlannedMovieDetailsWithOptions(chatId, user, movie, userHype, averageFriendHype, true);
+
+        verify(movieBot, times(1)).handlePhotoMessage(eq(chatId), eq("https://example.com/poster.jpg"), anyString(), anyList());
+    }
+
+    @Test
+    void sendPlannedMovieDetailsWithOptions_FriendSuggestedMovie() throws TelegramApiException {
+        String chatId = "12345";
+        AppUser user = new AppUser();
+        user.setUsername("testUser");
+
+        Movie movie = new Movie();
+        movie.setImdbId("tt1234567");
+        movie.setTitle("Test Movie");
+        movie.setYear("2024");
+        movie.setImdbRating("8.5");
+        movie.setPoster(null); // Нет постера
+
+        int userHype = 1;
+        double averageFriendHype = 3.0;
+
+        messageSender.sendPlannedMovieDetailsWithOptions(chatId, user, movie, userHype, averageFriendHype, false);
+
+        verify(movieBot, times(1)).execute(any(SendMessage.class));
+    }
 
 }

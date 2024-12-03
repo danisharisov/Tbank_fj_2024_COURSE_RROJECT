@@ -2,13 +2,11 @@ package com.example.Tbank_fj_2024_COURSE_PROJECT.services;
 
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.repositories.AppUserRepository;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.services.AppUserService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
@@ -20,80 +18,76 @@ class AppUserServiceTest {
     @Mock
     private AppUserRepository appUserRepository;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
     @InjectMocks
     private AppUserService appUserService;
-
-    private AppUser testUser;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        testUser = new AppUser();
-        testUser.setUsername("testUser");
-        testUser.setPassword("password");
     }
 
+    // Тестируем успешный поиск пользователя по имени
     @Test
-    void testFindByUsername_UserExists() {
-        when(appUserRepository.findByUsername("testUser")).thenReturn(Optional.of(testUser));
+    void findByUsername_UserExists_ReturnsUser() {
+        String username = "testUser";
+        AppUser user = new AppUser();
+        user.setUsername(username);
+        when(appUserRepository.findByUsername(username)).thenReturn(Optional.of(user));
 
-        AppUser foundUser = appUserService.findByUsername("testUser");
+        AppUser result = appUserService.findByUsername(username);
 
-        assertNotNull(foundUser);
-        assertEquals("testUser", foundUser.getUsername());
-        verify(appUserRepository, times(1)).findByUsername("testUser");
+        assertNotNull(result);
+        assertEquals(username, result.getUsername());
+        verify(appUserRepository, times(1)).findByUsername(username);
     }
 
+    // Тестируем случай, когда пользователь не найден
     @Test
-    void testFindByUsername_UserDoesNotExist() {
-        when(appUserRepository.findByUsername("nonexistentUser")).thenReturn(Optional.empty());
+    void findByUsername_UserNotFound_ThrowsException() {
+        String username = "nonExistentUser";
+        when(appUserRepository.findByUsername(username)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> appUserService.findByUsername("nonexistentUser"));
-        verify(appUserRepository, times(1)).findByUsername("nonexistentUser");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> appUserService.findByUsername(username));
+        assertEquals("Пользователь с таким именем не найден: " + username, exception.getMessage());
+        verify(appUserRepository, times(1)).findByUsername(username);
     }
 
+    // Тестируем успешный поиск пользователя по Telegram ID
     @Test
-    void testRegisterUser_NewUser() {
-        when(appUserRepository.findByUsername("newUser")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password")).thenReturn("encodedPassword");
+    void findByTelegramId_UserExists_ReturnsUser() {
+        String telegramId = "123456";
+        AppUser user = new AppUser();
+        user.setTelegramId(telegramId);
+        when(appUserRepository.findByTelegramId(telegramId)).thenReturn(Optional.of(user));
 
-        testUser.setUsername("newUser");
-        testUser.setPassword("password");
-        AppUser registeredUser = appUserService.registerUser(testUser, "123456");
+        AppUser result = appUserService.findByTelegramId(telegramId);
 
-        assertNotNull(registeredUser);
-        assertEquals("newUser", registeredUser.getUsername());
-        assertEquals("encodedPassword", registeredUser.getPassword());
-        assertEquals("123456", registeredUser.getTelegramId());
-        verify(appUserRepository, times(1)).save(testUser);
+        assertNotNull(result);
+        assertEquals(telegramId, result.getTelegramId());
+        verify(appUserRepository, times(1)).findByTelegramId(telegramId);
     }
 
+    // Тестируем случай, когда пользователь с указанным Telegram ID не найден
     @Test
-    void testRegisterUser_UserAlreadyExists() {
-        when(appUserRepository.findByUsername("testUser")).thenReturn(Optional.of(testUser));
+    void findByTelegramId_UserNotFound_ReturnsNull() {
+        String telegramId = "123456";
+        when(appUserRepository.findByTelegramId(telegramId)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> appUserService.registerUser(testUser, "123456"));
-        verify(appUserRepository, never()).save(testUser);
+        AppUser result = appUserService.findByTelegramId(telegramId);
+
+        assertNull(result);
+        verify(appUserRepository, times(1)).findByTelegramId(telegramId);
     }
 
+    // Тестируем успешное сохранение пользователя
     @Test
-    void testCheckPassword_CorrectPassword() {
-        when(passwordEncoder.matches("password", "encodedPassword")).thenReturn(true);
-        testUser.setPassword("encodedPassword");
+    void saveUser_SavesUserSuccessfully() {
+        AppUser user = new AppUser();
+        user.setUsername("newUser");
 
-        assertTrue(appUserService.checkPassword(testUser, "password"));
-        verify(passwordEncoder, times(1)).matches("password", "encodedPassword");
-    }
+        appUserService.saveUser(user);
 
-    @Test
-    void testCheckPassword_IncorrectPassword() {
-        when(passwordEncoder.matches("wrongPassword", "encodedPassword")).thenReturn(false);
-        testUser.setPassword("encodedPassword");
-
-        assertFalse(appUserService.checkPassword(testUser, "wrongPassword"));
-        verify(passwordEncoder, times(1)).matches("wrongPassword", "encodedPassword");
+        verify(appUserRepository, times(1)).save(user);
     }
 }

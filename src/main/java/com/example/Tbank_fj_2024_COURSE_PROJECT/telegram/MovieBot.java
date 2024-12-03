@@ -1,19 +1,28 @@
-package com.example.Tbank_fj_2024_COURSE_PROJECT;
+package com.example.Tbank_fj_2024_COURSE_PROJECT.telegram;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.models.user.AppUser;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CallbackHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.CommandHandler;
+import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.handlers.UnloggedStateHandler;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.UserStateEnum;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.MessageSender;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.telegram.services.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.util.List;
 
 @Component
 public class MovieBot extends TelegramWebhookBot {
@@ -24,23 +33,36 @@ public class MovieBot extends TelegramWebhookBot {
     private final CallbackHandler callbackHandler;
     private final SessionService sessionService;
     private final MessageSender messageSender;
+    private final UnloggedStateHandler unloggedStateHandler;
 
     @Autowired
-    public MovieBot(CommandHandler commandHandler, CallbackHandler callbackHandler, SessionService sessionService, MessageSender messageSender) {
+    public MovieBot(CommandHandler commandHandler, CallbackHandler callbackHandler,
+                    SessionService sessionService, MessageSender messageSender,
+                    UnloggedStateHandler unloggedStateHandler) {
         this.commandHandler = commandHandler;
         this.callbackHandler = callbackHandler;
         this.sessionService = sessionService;
         this.messageSender = messageSender;
+        this.unloggedStateHandler = unloggedStateHandler;
     }
 
-    private void handleTextMessage(String chatId, String messageText) {
+    void handleTextMessage(String chatId, String messageText, String username) {
         SessionService.UserState userState = sessionService.getUserState(chatId);
+        AppUser currentUser = sessionService.getCurrentUser(chatId);
+
+        if (currentUser == null) {
+            if ("/start".equals(messageText)) {
+                unloggedStateHandler.handleUnloggedState(chatId, messageText, username);
+            } else {
+                messageSender.sendMessage(chatId, "Вы еще не авторизованы. Нажмите /start для начала работы.");
+            }
+            return;
+        }
+
         if (userState != null) {
-            commandHandler.handleStateBasedCommand(chatId, messageText, userState.getState());
+            commandHandler.handleStateBasedCommand(chatId, messageText, userState.getState(), username);
         } else {
-            // Если состояние не определено, отправить пользователя в начальное состояние
-            sessionService.setUserState(chatId, UserStateEnum.DEFAULT_UNLOGGED);
-            messageSender.sendMessage(chatId, "Вы не авторизованы. Пожалуйста, используйте /login или /register.");
+            sessionService.setUserState(chatId, UserStateEnum.DEFAULT_LOGGED);
         }
     }
 
@@ -66,41 +88,20 @@ public class MovieBot extends TelegramWebhookBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             String chatId = update.getMessage().getChatId().toString();
-            logger.info("Received message from chatId: {}, text: {}", chatId, messageText);
+            String username = update.getMessage().getFrom().getUserName();
 
-            handleTextMessage(chatId, messageText);
+            logger.info("Received message from chatId: {}, text: {}, username: {}", chatId, messageText, username);
+            handleTextMessage(chatId, messageText, username);
 
         } else if (update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
             String chatId = update.getCallbackQuery().getMessage().getChatId().toString();
-
-            // Разделяем callbackData на префикс и данные после префикса
             String[] parts = callbackData.split(":", 2);
             String action = parts[0]; // префикс (например, select_movie, accept_request и т.д.)
             String data = (parts.length > 1) ? parts[1] : ""; // данные после префикса
-
-            switch (action) {
-                case "select_movie":
-                    sessionService.setContext(chatId, data); // обрабатываем данные после select_movie:
-                    callbackData = "select_movie"; // устанавливаем callbackData для логирования и обработки
-                    break;
-                case "accept_request":
-                    sessionService.setContext(chatId, data);
-                    break;
-                case "reject_request":
-                    sessionService.setContext(chatId, data);
-                    break;
-                case "cancel_request":
-                    sessionService.setContext(chatId, data);
-                    break;
-                default:
-                    logger.warn("Received unsupported callback action: {}", action);
-                    break;
-            }
-
+            sessionService.setContext(chatId, data);
             logger.info("Received callback from chatId: {}, action: {}, data: {}", chatId, action, data);
 
-            // Вызываем обработчик для callback
             callbackHandler.handleCallbackQuery(chatId, action);
         } else {
             logger.warn("Received unsupported update type: {}", update);
@@ -108,7 +109,21 @@ public class MovieBot extends TelegramWebhookBot {
         return null;
     }
 
-
+    public void handlePhotoMessage(String chatId, String photoUrl, String caption, List<List<InlineKeyboardButton>> buttons) {
+        SendPhoto sendPhoto = new SendPhoto();
+        sendPhoto.setChatId(chatId);
+        sendPhoto.setPhoto(new InputFile(photoUrl));
+        sendPhoto.setCaption(caption);
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        inlineKeyboardMarkup.setKeyboard(buttons);
+        sendPhoto.setReplyMarkup(inlineKeyboardMarkup);
+        try {
+            execute(sendPhoto);
+            logger.info("Photo with caption sent to chatId: {}", chatId);
+        } catch (TelegramApiException e) {
+            logger.error("Ошибка при отправке фото: {}", e.getMessage());
+        }
+    }
 
     @Override
     public String getBotPath() {

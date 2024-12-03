@@ -6,43 +6,39 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class AppUserService {
-
     private static final Logger logger = LoggerFactory.getLogger(AppUserService.class);
 
     @Autowired
     private AppUserRepository appUserRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-
+    // Ищет пользователя по имени, выбрасывает исключение, если пользователь не найден
     @Transactional
     public AppUser findByUsername(String username) {
         return appUserRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь с таким именем не найден: " + username));
     }
 
-
-
+    // Ищет пользователя по Telegram ID, возвращает null, если пользователь не найден
     @Transactional
-    public AppUser registerUser(AppUser newUser, String chatId) {
-        if (appUserRepository.findByUsername(newUser.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Пользователь с таким именем уже существует.");
-        }
-        newUser.setTelegramId(chatId);
-        newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
-        appUserRepository.save(newUser);
-        logger.info("Новый пользователь зарегистрирован: {}", newUser.getUsername());
-        return newUser;
+    public AppUser findByTelegramId(String telegramId) {
+        return appUserRepository.findByTelegramId(telegramId).orElse(null);
     }
 
+    // Сохраняет пользователя в базу данных
     @Transactional
-    public boolean checkPassword(AppUser user, String password) {
-        return passwordEncoder.matches(password, user.getPassword());
+    public void saveUser(AppUser user) {
+        appUserRepository.save(user);
+    }
+
+    //Возвращает всех пользователей
+    @Transactional
+    public List<AppUser> findAllUsers() {
+        return appUserRepository.findAll();
     }
 }

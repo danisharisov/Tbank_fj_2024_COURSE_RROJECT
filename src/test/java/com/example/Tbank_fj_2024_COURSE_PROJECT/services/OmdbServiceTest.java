@@ -1,26 +1,22 @@
 package com.example.Tbank_fj_2024_COURSE_PROJECT.services;
 
+import com.example.Tbank_fj_2024_COURSE_PROJECT.external.omdb.OmdbMovie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.external.omdb.OmdbMovieResponse;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.external.omdb.OmdbSearchResult;
-import com.example.Tbank_fj_2024_COURSE_PROJECT.external.omdb.OmdbMovie;
 import com.example.Tbank_fj_2024_COURSE_PROJECT.models.movie.Movie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 import org.springframework.web.client.RestTemplate;
 
-import java.lang.reflect.Field;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-public class OmdbServiceTest {
+class OmdbServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
@@ -29,90 +25,139 @@ public class OmdbServiceTest {
     private OmdbService omdbService;
 
     @BeforeEach
-    void setUp() throws Exception {
-        omdbService = new OmdbService(restTemplate);
-
-        Field apiKeyField = OmdbService.class.getDeclaredField("apiKey");
-        apiKeyField.setAccessible(true);
-        apiKeyField.set(omdbService, "test_api_key");
-
-        Field apiUrlField = OmdbService.class.getDeclaredField("apiUrl");
-        apiUrlField.setAccessible(true);
-        apiUrlField.set(omdbService, "http://www.omdbapi.com");
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
     }
 
+    // Тестируем успешное получение фильма по IMDb ID
     @Test
-    void testGetMovieByImdbId_Found() {
-        OmdbMovieResponse omdbMovieResponse = new OmdbMovieResponse();
-        omdbMovieResponse.setTitle("Test Movie");
-        omdbMovieResponse.setImdbID("tt1234567");
-        omdbMovieResponse.setYear("2020");
-        omdbMovieResponse.setImdbRating("8.0");
-        omdbMovieResponse.setPoster("test_poster_url");
-        omdbMovieResponse.setType("movie");
-        omdbMovieResponse.setDirector("Test Director");
-        omdbMovieResponse.setResponse("True");
+    void getMovieByImdbId_Success() {
+        String imdbId = "tt1234567";
+        OmdbMovieResponse response = new OmdbMovieResponse();
+        response.setResponse("True");
+        response.setTitle("Test Movie");
+        response.setImdbID(imdbId);
 
-        String url = "http://www.omdbapi.com/?i=tt1234567&apikey=test_api_key";
-        when(restTemplate.getForObject(url, OmdbMovieResponse.class)).thenReturn(omdbMovieResponse);
+        when(restTemplate.getForObject(anyString(), eq(OmdbMovieResponse.class))).thenReturn(response);
 
-        Movie movie = omdbService.getMovieByImdbId("tt1234567");
+        Movie result = omdbService.getMovieByImdbId(imdbId);
+
+        assertNotNull(result);
+        assertEquals("Test Movie", result.getTitle());
+        assertEquals(imdbId, result.getImdbId());
+    }
+
+    // Тестируем случай, когда OMDb возвращает пустой или некорректный ответ
+    @Test
+    void getMovieByImdbId_EmptyResponse() {
+        String imdbId = "tt1234567";
+        OmdbMovieResponse response = new OmdbMovieResponse();
+        response.setResponse("False");
+
+        when(restTemplate.getForObject(anyString(), eq(OmdbMovieResponse.class))).thenReturn(response);
+
+        Movie result = omdbService.getMovieByImdbId(imdbId);
+
+        assertNull(result);
+    }
+
+    // Тестируем ошибку при запросе к OMDb API
+    @Test
+    void getMovieByImdbId_ApiError() {
+        String imdbId = "tt1234567";
+
+        when(restTemplate.getForObject(anyString(), eq(OmdbMovieResponse.class)))
+                .thenThrow(new RuntimeException("API Error"));
+
+        Movie result = omdbService.getMovieByImdbId(imdbId);
+
+        assertNull(result);
+    }
+
+    // Тестируем успешный поиск фильмов по названию
+    @Test
+    void searchMoviesByTitle_Success() {
+        String title = "Test Movie";
+        OmdbSearchResult searchResult = new OmdbSearchResult();
+        searchResult.setResponse("True");
+        OmdbMovie movie = new OmdbMovie();
+        movie.setTitle("Test Movie");
+        movie.setImdbId("tt1234567");
+        searchResult.setSearch(List.of(movie));
+
+        when(restTemplate.getForObject(anyString(), eq(OmdbSearchResult.class))).thenReturn(searchResult);
+
+        List<Movie> movies = omdbService.searchMoviesByTitle(title);
+
+        assertNotNull(movies);
+        assertEquals(1, movies.size());
+        assertEquals("Test Movie", movies.get(0).getTitle());
+    }
+
+    // Тестируем пустой ответ от OMDb API при поиске
+    @Test
+    void searchMoviesByTitle_EmptyResponse() {
+        String title = "Test Movie";
+        OmdbSearchResult searchResult = new OmdbSearchResult();
+        searchResult.setResponse("False");
+
+        when(restTemplate.getForObject(anyString(), eq(OmdbSearchResult.class))).thenReturn(searchResult);
+
+        List<Movie> movies = omdbService.searchMoviesByTitle(title);
+
+        assertTrue(movies.isEmpty());
+    }
+
+    // Тестируем ошибку при выполнении запроса на поиск
+    @Test
+    void searchMoviesByTitle_ApiError() {
+        String title = "Test Movie";
+
+        when(restTemplate.getForObject(anyString(), eq(OmdbSearchResult.class)))
+                .thenThrow(new RuntimeException("API Error"));
+
+        List<Movie> movies = omdbService.searchMoviesByTitle(title);
+
+        assertTrue(movies.isEmpty());
+    }
+
+    // Тестируем преобразование ответа OMDb в объект Movie
+    @Test
+    void mapOmdbResponseToMovie_Success() {
+        OmdbMovieResponse response = new OmdbMovieResponse();
+        response.setTitle("Test Movie");
+        response.setImdbID("tt1234567");
+
+        Movie movie = omdbService.mapOmdbResponseToMovie(response);
 
         assertNotNull(movie);
         assertEquals("Test Movie", movie.getTitle());
         assertEquals("tt1234567", movie.getImdbId());
-        assertEquals("8.0", movie.getImdbRating());
-        verify(restTemplate, times(1)).getForObject(url, OmdbMovieResponse.class);
     }
 
+    // Тестируем преобразование результата поиска OMDb в список Movie
     @Test
-    void testGetMovieByImdbId_NotFound() {
-        String url = "http://www.omdbapi.com/?i=tt1234567&apikey=test_api_key";
-        when(restTemplate.getForObject(url, OmdbMovieResponse.class)).thenReturn(null);
-
-        Movie movie = omdbService.getMovieByImdbId("tt1234567");
-
-        assertNull(movie);
-        verify(restTemplate, times(1)).getForObject(url, OmdbMovieResponse.class);
-    }
-
-    @Test
-    void testSearchMoviesByTitle_Found() {
-        OmdbSearchResult searchResult = new OmdbSearchResult();
+    void mapOmdbSearchResultToMovies_Success() {
         OmdbMovie omdbMovie = new OmdbMovie();
         omdbMovie.setTitle("Test Movie");
         omdbMovie.setImdbId("tt1234567");
-        omdbMovie.setYear("2020");
-        omdbMovie.setType("movie");
-        omdbMovie.setPoster("test_poster_url");
 
-        searchResult.setResponse("True");
-        searchResult.setSearch(Collections.singletonList(omdbMovie));
-        searchResult.setTotalResults("1");
+        OmdbSearchResult searchResult = new OmdbSearchResult();
+        searchResult.setSearch(List.of(omdbMovie));
 
-        String url = "http://www.omdbapi.com/?s=Test+Movie&type=movie&apikey=test_api_key";
-        when(restTemplate.getForObject(url, OmdbSearchResult.class)).thenReturn(searchResult);
+        List<Movie> movies = omdbService.mapOmdbSearchResultToMovies(searchResult);
 
-        List<Movie> movies = omdbService.searchMoviesByTitle("Test Movie");
-
+        assertNotNull(movies);
         assertEquals(1, movies.size());
         assertEquals("Test Movie", movies.get(0).getTitle());
-        assertEquals("tt1234567", movies.get(0).getImdbId());
-        verify(restTemplate, times(1)).getForObject(url, OmdbSearchResult.class);
     }
 
+    // Тестируем успешное кодирование строки
     @Test
-    void testSearchMoviesByTitle_NotFound() {
-        OmdbSearchResult searchResult = new OmdbSearchResult();
-        searchResult.setResponse("False");
+    void encodeValue_Success() {
+        String value = "Test Movie";
+        String encodedValue = omdbService.encodeValue(value);
 
-        String url = "http://www.omdbapi.com/?s=Nonexistent+Movie&type=movie&apikey=test_api_key";
-        when(restTemplate.getForObject(url, OmdbSearchResult.class)).thenReturn(searchResult);
-
-        List<Movie> movies = omdbService.searchMoviesByTitle("Nonexistent Movie");
-
-        assertTrue(movies.isEmpty());
-        verify(restTemplate, times(1)).getForObject(url, OmdbSearchResult.class);
+        assertEquals("Test+Movie", encodedValue);
     }
-
 }
