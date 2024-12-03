@@ -49,7 +49,7 @@ public class CommandHandler {
     }
 
     @PostConstruct
-    private void initCommandMap() {
+    protected void initCommandMap() {
         commandMap.put(UserStateEnum.WAITING_FOR_MOVIE_TITLE, addMovieCommand);
         commandMap.put(UserStateEnum.WAITING_WATCHED_MOVIE_NUMBER, pickWatchedMovieCommand);
         commandMap.put(UserStateEnum.WAITING_PLANNED_MOVIE_NUMBER, pickPlannedMovieCommand);

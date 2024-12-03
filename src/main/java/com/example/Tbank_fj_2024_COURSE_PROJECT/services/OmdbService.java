@@ -78,7 +78,7 @@ public class OmdbService {
         return movie;
     }
 
-    private List<Movie> mapOmdbSearchResultToMovies(OmdbSearchResult searchResult) {
+    protected List<Movie> mapOmdbSearchResultToMovies(OmdbSearchResult searchResult) {
         List<Movie> movies = new ArrayList<>();
         for (OmdbMovie omdbMovie : searchResult.getSearch()) {
             Movie movie = new Movie();
@@ -95,7 +95,7 @@ public class OmdbService {
         return movies;
     }
 
-    private String encodeValue(String value) {
+    protected String encodeValue(String value) {
         try {
             return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
         } catch (Exception e) {

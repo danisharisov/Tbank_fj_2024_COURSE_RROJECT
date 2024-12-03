@@ -39,4 +39,10 @@ public class Movie {
     @Column(nullable = true)
     private String imdbRating;
 
+    public Movie(String imdbId, String title, String year) {
+        this.imdbId = imdbId;
+        this.title = title;
+        this.year = year;
+    }
+
 }

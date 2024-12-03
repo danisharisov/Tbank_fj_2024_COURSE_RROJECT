@@ -24,9 +24,16 @@ jacoco {
 
 jacocoTestReport {
 	reports {
-		xml.required = true
 		csv.required = false
-		html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+
+		xml {
+			required.set(true)
+			outputLocation.set(layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml"))
+		}
+		html {
+			required.set(true)
+			outputLocation.set(layout.buildDirectory.dir("jacocoHtml"))
+		}
 	}
 	classDirectories.setFrom(
 			files(
@@ -64,8 +71,13 @@ dependencies {
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.jacocoTestReport {
+	dependsOn tasks.test
 }

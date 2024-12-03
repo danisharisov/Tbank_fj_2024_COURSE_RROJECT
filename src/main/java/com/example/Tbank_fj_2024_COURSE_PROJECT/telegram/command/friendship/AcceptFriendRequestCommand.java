@@ -37,6 +37,13 @@ public class AcceptFriendRequestCommand extends Command {
 
         if (currentUser != null) {
             String friendUsername = sessionService.getContext(chatId);
+
+            if (friendUsername == null) {
+                logger.warn("Friend username is null for chatId: {}", chatId);
+                messageSender.sendMessage(chatId, "Ошибка: имя друга не найдено.");
+                return;
+            }
+
             logger.info("Accepting friend request from user: {} for current user: {}", friendUsername, currentUser.getUsername());
 
             friendshipService.acceptFriendRequest(currentUser.getUsername(), friendUsername);
