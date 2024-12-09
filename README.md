@@ -84,6 +84,7 @@ spring.datasource.username={ВАШ_ПОСТГРЕС_ЛОГИН}
 spring.datasource.password={ВАШ_ПОСТГРЕС_ПАРОЛЬ}
 telegram.bot.token={ВАШ_ТОКЕН_БОТА}
 omdb.api.key={ВАШ_КЛЮЧ_OMDB_API}
+```
 
 1. **Создайте базу данных в PostgreSQL**
 ```sql
