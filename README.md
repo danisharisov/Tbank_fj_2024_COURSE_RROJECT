@@ -97,7 +97,7 @@ docker run -d --name rabbitmq -p 5672:5672 rabbitmq
 
 ## 🚀 Запуск ветки `review_dev_to_webhook` (or main)
 1. Создайте файл .env в корне проекта
-``.env
+```.env
 POSTGRES_DB=movie_ratings_db
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=admin
@@ -116,9 +116,9 @@ WEBHOOK_SECRET_TOKEN={ВАШ_СЕКРЕТНЫЙ_КЛЮЧ}
 
 OMDB_API_KEY={ВАШ_КЛЮЧ_OMDB_API}
 OMDB_API_URL=http://www.omdbapi.com
-
+```
 2. Убедитесь, что nginx настроен для работы с Telegram Webhook
-``default.conf
+```default.conf
 server {
     listen 80;
     server_name {ВАШ_ДОМЕН};
@@ -162,7 +162,7 @@ server {
         proxy_read_timeout 5s;
     }
 }
-
+```
 1. **Соберите Docker-контейнеры: В корне проекта выполните**
 ```bash
 docker-compose up -d
