@@ -1,5 +1,5 @@
 
-[universal_diploma (3).pdf](https://github.com/user-attachments/files/21885126/universal_diploma.3.pdf)
+<img width="1234" height="872" alt="image" src="https://github.com/user-attachments/assets/746952e5-c272-4bbc-9864-e57896db7a38" />
 
 
 
