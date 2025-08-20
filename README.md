@@ -1,3 +1,8 @@
+
+[universal_diploma (3).pdf](https://github.com/user-attachments/files/21885126/universal_diploma.3.pdf)
+
+
+
 # PickAFlick: Сервис выбора фильмов
 
 ## 📜 Обзор
